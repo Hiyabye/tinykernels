@@ -41,6 +41,10 @@ static int compare_double(const void *a, const void *b) {
 // Computes the median of an array of doubles, used to summarize benchmark
 // results
 static double median(double *values, size_t n) {
+  if (!values || n == 0) {
+    return -1.0;
+  }
+
   qsort(values, n, sizeof(double), compare_double);
 
   if (n % 2 == 1) {
