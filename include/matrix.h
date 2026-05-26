@@ -7,7 +7,7 @@
 struct Matrix {
   size_t rows;
   size_t cols;
-  int **data;
+  int *data;
 };
 
 // Matrix utility functions

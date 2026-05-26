@@ -26,25 +26,11 @@ struct Matrix init_matrix(size_t r, size_t c) {
     return empty_matrix();
   }
 
-  struct Matrix m;
-  m.rows = r;
-  m.cols = c;
-  m.data = malloc(sizeof(int *) * r);
+  struct Matrix m = {r, c, NULL};
+  m.data = calloc(r * c, sizeof(int));
   if (!m.data) {
     fprintf(stderr, "memory allocation failed\n");
     return empty_matrix();
-  }
-
-  for (size_t i = 0; i < r; ++i) {
-    m.data[i] = calloc(c, sizeof(int));
-    if (!m.data[i]) {
-      fprintf(stderr, "memory allocation failed\n");
-      for (size_t j = 0; j < i; ++j) {
-        free(m.data[j]);
-      }
-      free(m.data);
-      return empty_matrix();
-    }
   }
   return m;
 }
@@ -53,7 +39,7 @@ struct Matrix init_matrix(size_t r, size_t c) {
 void print_matrix(const struct Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
-      printf("%d ", m->data[i][j]);
+      printf("%d ", m->data[i * m->cols + j]);
     }
     printf("\n");
   }
@@ -63,9 +49,6 @@ void print_matrix(const struct Matrix *m) {
 void free_matrix(struct Matrix *m) {
   if (!m || !m->data) {
     return;
-  }
-  for (size_t i = 0; i < m->rows; ++i) {
-    free(m->data[i]);
   }
   free(m->data);
   m->data = NULL;
@@ -94,7 +77,8 @@ struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b) {
   for (size_t i = 0; i < a->rows; ++i) {
     for (size_t j = 0; j < b->cols; ++j) {
       for (size_t k = 0; k < a->cols; ++k) {
-        c.data[i][j] += a->data[i][k] * b->data[k][j];
+        c.data[i * c.cols + j] +=
+            a->data[i * a->cols + k] * b->data[k * b->cols + j];
       }
     }
   }
@@ -114,9 +98,9 @@ static void *matmul_worker(void *arg) {
     for (size_t j = 0; j < b->cols; ++j) {
       int sum = 0;
       for (size_t k = 0; k < a->cols; ++k) {
-        sum += a->data[i][k] * b->data[k][j];
+        sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
       }
-      c->data[i][j] = sum;
+      c->data[i * c->cols + j] = sum;
     }
   }
   return NULL;

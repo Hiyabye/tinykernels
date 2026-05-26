@@ -18,7 +18,7 @@ static double now_seconds(void) {
 static void fill_matrix(struct Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
-      m->data[i][j] = (int)((i + j) % 10 + 1);
+      m->data[i * m->cols + j] = (int)((i + j) % 10 + 1);
     }
   }
 }
