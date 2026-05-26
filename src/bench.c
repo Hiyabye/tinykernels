@@ -1,4 +1,5 @@
 #include "bench.h"
+#include "matmul.h"
 #include "matrix.h"
 
 #include <stdio.h>
