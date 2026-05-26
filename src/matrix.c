@@ -193,3 +193,31 @@ struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
 
   return c;
 }
+
+struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b) {
+  if (!a || !b || !a->data || !b->data) {
+    fprintf(stderr, "invalid matrix\n");
+    return empty_matrix();
+  }
+
+  if (a->cols != b->rows) {
+    fprintf(stderr, "incompatible matrix dimensions\n");
+    return empty_matrix();
+  }
+
+  struct Matrix c = init_matrix(a->rows, b->cols);
+  if (!c.data) {
+    fprintf(stderr, "failed to initialize result matrix\n");
+    return empty_matrix();
+  }
+
+  for (size_t i = 0; i < a->rows; ++i) {
+    for (size_t k = 0; k < a->cols; ++k) {
+      int aik = a->data[i * a->cols + k];
+      for (size_t j = 0; j < b->cols; ++j) {
+        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+      }
+    }
+  }
+  return c;
+}

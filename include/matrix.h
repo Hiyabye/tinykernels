@@ -20,5 +20,6 @@ void free_matrix(struct Matrix *mat);
 struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b);
 struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
                               size_t num_threads);
+struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b);
 
 #endif // MATRIX_H
