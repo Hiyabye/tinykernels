@@ -14,7 +14,7 @@ A small C project comparing naive matrix multiplication with a pthread-based par
 
 ```bash
 make
-````
+```
 
 ## Run
 
