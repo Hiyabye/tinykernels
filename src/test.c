@@ -82,6 +82,8 @@ void run_benchmark(size_t rows, size_t inner, size_t cols, size_t num_threads,
     fprintf(stderr, "memory allocation failed\n");
     free(naive_times);
     free(threaded_times);
+    free_matrix(&a);
+    free_matrix(&b);
     return;
   }
 
