@@ -1,4 +1,4 @@
-#include "test.h"
+#include "bench.h"
 
 // Entry point of the program, runs benchmarks for matrix multiplication
 int main(void) {
