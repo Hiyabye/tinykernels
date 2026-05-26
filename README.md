@@ -1,0 +1,46 @@
+# Parallel Matrix Multiplication
+
+A small C project comparing naive matrix multiplication with a pthread-based parallel implementation.
+
+## Features
+
+- Dynamic matrix allocation
+- Naive matrix multiplication
+- Row-partitioned pthread matrix multiplication
+- Median-based benchmarking
+- Basic stress/correctness testing
+
+## Build
+
+```bash
+make
+````
+
+## Run
+
+```bash
+make run
+```
+
+## Debug build
+
+```bash
+make debug
+```
+
+## Sanitizer build
+
+```bash
+make sanitize
+make run
+```
+
+## Example
+
+```text
+[benchmark]
+A: 1000x1000, B: 1000x1000, threads: 10, iterations: 10
+naive median:    ...
+threaded median: ...
+speedup:         ...
+```

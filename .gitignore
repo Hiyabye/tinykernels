@@ -1,0 +1,7 @@
+build/
+matmul
+*.o
+*.d
+*.out
+*.log
+.DS_Store
