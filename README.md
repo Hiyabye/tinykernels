@@ -8,7 +8,6 @@ A small C project comparing naive matrix multiplication with a pthread-based par
 - Naive matrix multiplication
 - Row-partitioned pthread matrix multiplication
 - Median-based benchmarking
-- Basic stress/correctness testing
 
 ## Build
 
