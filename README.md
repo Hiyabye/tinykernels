@@ -1,6 +1,6 @@
 # Parallel Matrix Multiplication
 
-A small C project comparing naive matrix multiplication with a pthread-based parallel implementation.
+A learning-oriented ML kernel project that implements and benchmarks matrix multiplication and related tensor operations from scratch.
 
 ## Features
 
