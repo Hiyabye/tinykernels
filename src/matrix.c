@@ -1,6 +1,8 @@
 #include "matrix.h"
 
+#include <limits.h>
 #include <pthread.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,6 +25,11 @@ struct Matrix empty_matrix(void) {
 struct Matrix init_matrix(size_t r, size_t c) {
   if (r == 0 || c == 0) {
     fprintf(stderr, "invalid matrix dimensions\n");
+    return empty_matrix();
+  }
+
+  if (r > SIZE_MAX / c) {
+    fprintf(stderr, "matrix size overflow\n");
     return empty_matrix();
   }
 
