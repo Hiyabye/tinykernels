@@ -3,12 +3,20 @@
 
 #include "matrix.h"
 
-// Matrix multiplication functions
-Matrix matmul_naive(const Matrix *a, const Matrix *b);
-Matrix matmul_threaded(const Matrix *a, const Matrix *b, size_t num_threads);
-Matrix matmul_ikj(const Matrix *a, const Matrix *b);
-Matrix matmul_blocked(const Matrix *a, const Matrix *b, size_t block_size);
-Matrix matmul_threaded_blocked(const Matrix *a, const Matrix *b,
-                               size_t num_threads, size_t block_size);
+typedef enum {
+  MATMUL_REF_IJK,
+  MATMUL_SEQ_IKJ,
+  MATMUL_SEQ_BLOCKED_IKJ,
+  MATMUL_PAR_ROWS_IJK,
+  MATMUL_PAR_ROWS_BLOCKED_IKJ
+} MatmulKernel;
+
+typedef struct {
+  MatmulKernel kernel;
+  size_t num_threads;
+  size_t block_size;
+} MatmulConfig;
+
+Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig config);
 
 #endif // MATMUL_H

@@ -4,10 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Helper function to get the minimum of two size_t values, used for block size
-static size_t min_size(size_t a, size_t b) { return a < b ? a : b; }
+static inline size_t min_size(size_t a, size_t b) { return a < b ? a : b; }
 
-// Arguments structure for worker threads in matmul_threaded
+// arguments structure for parallel blocked worker threads
 struct ThreadArgs {
   const Matrix *a;
   const Matrix *b;
@@ -17,8 +16,8 @@ struct ThreadArgs {
   size_t block_size;
 };
 
-// Naive matrix multiplication implementation (single-threaded)
-Matrix matmul_naive(const Matrix *a, const Matrix *b) {
+// naive reference implementation (ijk order)
+static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -46,9 +45,82 @@ Matrix matmul_naive(const Matrix *a, const Matrix *b) {
   return c;
 }
 
-// Worker function for each thread in matmul_threaded, computes a portion of the
-// result matrix
-static void *matmul_worker(void *arg) {
+// optimized sequential implementation (ikj order)
+static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
+  if (!a || !b || !a->data || !b->data) {
+    fprintf(stderr, "invalid matrix\n");
+    return empty_matrix();
+  }
+
+  if (a->cols != b->rows) {
+    fprintf(stderr, "incompatible matrix dimensions\n");
+    return empty_matrix();
+  }
+
+  Matrix c = init_matrix(a->rows, b->cols);
+  if (!c.data) {
+    fprintf(stderr, "failed to initialize result matrix\n");
+    return empty_matrix();
+  }
+
+  for (size_t i = 0; i < a->rows; ++i) {
+    for (size_t k = 0; k < a->cols; ++k) {
+      mat_elem_t aik = a->data[i * a->cols + k];
+      for (size_t j = 0; j < b->cols; ++j) {
+        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+      }
+    }
+  }
+  return c;
+}
+
+// blocked implementation (ikj order)
+static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
+                                     size_t block_size) {
+  if (!a || !b || !a->data || !b->data) {
+    fprintf(stderr, "invalid matrix\n");
+    return empty_matrix();
+  }
+
+  if (a->cols != b->rows) {
+    fprintf(stderr, "incompatible matrix dimensions\n");
+    return empty_matrix();
+  }
+
+  if (block_size == 0) {
+    fprintf(stderr, "block_size must be greater than zero\n");
+    return empty_matrix();
+  }
+
+  Matrix c = init_matrix(a->rows, b->cols);
+  if (!c.data) {
+    fprintf(stderr, "failed to initialize result matrix\n");
+    return empty_matrix();
+  }
+
+  for (size_t i0 = 0; i0 < a->rows; i0 += block_size) {
+    for (size_t k0 = 0; k0 < a->cols; k0 += block_size) {
+      for (size_t j0 = 0; j0 < b->cols; j0 += block_size) {
+        size_t i_max = min_size(i0 + block_size, a->rows);
+        size_t k_max = min_size(k0 + block_size, a->cols);
+        size_t j_max = min_size(j0 + block_size, b->cols);
+
+        for (size_t i = i0; i < i_max; ++i) {
+          for (size_t k = k0; k < k_max; ++k) {
+            mat_elem_t aik = a->data[i * a->cols + k];
+
+            for (size_t j = j0; j < j_max; ++j) {
+              c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+            }
+          }
+        }
+      }
+    }
+  }
+  return c;
+}
+
+static void *matmul_par_rows_ijk_worker(void *arg) {
   struct ThreadArgs *args = arg;
 
   const Matrix *a = args->a;
@@ -67,9 +139,9 @@ static void *matmul_worker(void *arg) {
   return NULL;
 }
 
-// Threaded matrix multiplication implementation, divides work among multiple
-// threads
-Matrix matmul_threaded(const Matrix *a, const Matrix *b, size_t num_threads) {
+// parallel implementation that divides work by rows (ijk order)
+static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
+                                  size_t num_threads) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -122,7 +194,8 @@ Matrix matmul_threaded(const Matrix *a, const Matrix *b, size_t num_threads) {
 
     current_row = args[t].row_end;
 
-    int err = pthread_create(&threads[t], NULL, matmul_worker, &args[t]);
+    int err =
+        pthread_create(&threads[t], NULL, matmul_par_rows_ijk_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
 
@@ -147,79 +220,7 @@ Matrix matmul_threaded(const Matrix *a, const Matrix *b, size_t num_threads) {
   return c;
 }
 
-Matrix matmul_ikj(const Matrix *a, const Matrix *b) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
-  }
-
-  Matrix c = init_matrix(a->rows, b->cols);
-  if (!c.data) {
-    fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
-  }
-
-  for (size_t i = 0; i < a->rows; ++i) {
-    for (size_t k = 0; k < a->cols; ++k) {
-      mat_elem_t aik = a->data[i * a->cols + k];
-      for (size_t j = 0; j < b->cols; ++j) {
-        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
-      }
-    }
-  }
-  return c;
-}
-
-Matrix matmul_blocked(const Matrix *a, const Matrix *b, size_t block_size) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
-  }
-
-  if (block_size == 0) {
-    fprintf(stderr, "block_size must be greater than zero\n");
-    return empty_matrix();
-  }
-
-  Matrix c = init_matrix(a->rows, b->cols);
-  if (!c.data) {
-    fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
-  }
-
-  for (size_t i0 = 0; i0 < a->rows; i0 += block_size) {
-    for (size_t k0 = 0; k0 < a->cols; k0 += block_size) {
-      for (size_t j0 = 0; j0 < b->cols; j0 += block_size) {
-        size_t i_max = min_size(i0 + block_size, a->rows);
-        size_t k_max = min_size(k0 + block_size, a->cols);
-        size_t j_max = min_size(j0 + block_size, b->cols);
-
-        for (size_t i = i0; i < i_max; ++i) {
-          for (size_t k = k0; k < k_max; ++k) {
-            mat_elem_t aik = a->data[i * a->cols + k];
-
-            for (size_t j = j0; j < j_max; ++j) {
-              c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
-            }
-          }
-        }
-      }
-    }
-  }
-  return c;
-}
-
-static void *matmul_blocked_worker(void *arg) {
+static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
   struct ThreadArgs *args = arg;
 
   const Matrix *a = args->a;
@@ -250,8 +251,10 @@ static void *matmul_blocked_worker(void *arg) {
   return NULL;
 }
 
-Matrix matmul_threaded_blocked(const Matrix *a, const Matrix *b,
-                               size_t num_threads, size_t block_size) {
+// parallel blocked implementation that divides work by rows (ikj order)
+static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
+                                          size_t num_threads,
+                                          size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -310,8 +313,8 @@ Matrix matmul_threaded_blocked(const Matrix *a, const Matrix *b,
 
     current_row = args[t].row_end;
 
-    int err =
-        pthread_create(&threads[t], NULL, matmul_blocked_worker, &args[t]);
+    int err = pthread_create(&threads[t], NULL,
+                             matmul_par_rows_blocked_ikj_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
 
@@ -334,4 +337,21 @@ Matrix matmul_threaded_blocked(const Matrix *a, const Matrix *b,
   free(args);
 
   return c;
+}
+
+Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
+  switch (cfg.kernel) {
+  case MATMUL_REF_IJK:
+    return matmul_ref_ijk(a, b);
+  case MATMUL_SEQ_IKJ:
+    return matmul_seq_ikj(a, b);
+  case MATMUL_SEQ_BLOCKED_IKJ:
+    return matmul_seq_blocked_ikj(a, b, cfg.block_size);
+  case MATMUL_PAR_ROWS_IJK:
+    return matmul_par_rows_ijk(a, b, cfg.num_threads);
+  case MATMUL_PAR_ROWS_BLOCKED_IKJ:
+    return matmul_par_rows_blocked_ikj(a, b, cfg.num_threads, cfg.block_size);
+  default:
+    return empty_matrix();
+  }
 }

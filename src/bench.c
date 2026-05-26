@@ -80,11 +80,16 @@ double naive_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  double result = -1.0;
+  MatmulConfig cfg = {
+      .kernel = MATMUL_REF_IJK,
+      .num_threads = 1,
+      .block_size = 1,
+  };
 
+  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul_naive(&a, &b);
+    Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
@@ -133,11 +138,16 @@ double threaded_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  double result = -1.0;
+  MatmulConfig cfg = {
+      .kernel = MATMUL_PAR_ROWS_IJK,
+      .num_threads = num_threads,
+      .block_size = 1,
+  };
 
+  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul_threaded(&a, &b, num_threads);
+    Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
@@ -185,11 +195,16 @@ double ikj_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  double result = -1.0;
+  MatmulConfig cfg = {
+      .kernel = MATMUL_SEQ_IKJ,
+      .num_threads = 1,
+      .block_size = 1,
+  };
 
+  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul_ikj(&a, &b);
+    Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
@@ -240,11 +255,16 @@ double blocked_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  double result = -1.0;
+  MatmulConfig cfg = {
+      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
+      .num_threads = 1,
+      .block_size = block_size,
+  };
 
+  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul_blocked(&a, &b, block_size);
+    Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
@@ -296,11 +316,16 @@ double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  double result = -1.0;
+  MatmulConfig cfg = {
+      .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
+      .num_threads = num_threads,
+      .block_size = block_size,
+  };
 
+  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul_threaded_blocked(&a, &b, num_threads, block_size);
+    Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
