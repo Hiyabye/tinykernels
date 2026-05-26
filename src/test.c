@@ -15,7 +15,7 @@ static double now_seconds(void) {
 
 // Fills a matrix with deterministic values based on row and column indices, for
 // testing
-static void fill_matrix(struct Matrix *m) {
+static void fill_matrix(Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
       m->data[i * m->cols + j] = (int)((i + j) % 10 + 1);
@@ -58,8 +58,8 @@ static double median(double *values, size_t n) {
 // iterations
 double naive_benchmark(size_t rows, size_t inner, size_t cols,
                        size_t iterations) {
-  struct Matrix a = init_matrix(rows, inner);
-  struct Matrix b = init_matrix(inner, cols);
+  Matrix a = init_matrix(rows, inner);
+  Matrix b = init_matrix(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
@@ -83,7 +83,7 @@ double naive_benchmark(size_t rows, size_t inner, size_t cols,
 
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    struct Matrix c = matmul_naive(&a, &b);
+    Matrix c = matmul_naive(&a, &b);
     double end = now_seconds();
 
     if (!c.data) {
@@ -111,8 +111,8 @@ cleanup:
 // iterations
 double threaded_benchmark(size_t rows, size_t inner, size_t cols,
                           size_t num_threads, size_t iterations) {
-  struct Matrix a = init_matrix(rows, inner);
-  struct Matrix b = init_matrix(inner, cols);
+  Matrix a = init_matrix(rows, inner);
+  Matrix b = init_matrix(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
@@ -136,7 +136,7 @@ double threaded_benchmark(size_t rows, size_t inner, size_t cols,
 
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    struct Matrix c = matmul_threaded(&a, &b, num_threads);
+    Matrix c = matmul_threaded(&a, &b, num_threads);
     double end = now_seconds();
 
     if (!c.data) {
@@ -163,8 +163,8 @@ cleanup:
 // execution time and returning the median time over multiple iterations
 double ikj_benchmark(size_t rows, size_t inner, size_t cols,
                      size_t iterations) {
-  struct Matrix a = init_matrix(rows, inner);
-  struct Matrix b = init_matrix(inner, cols);
+  Matrix a = init_matrix(rows, inner);
+  Matrix b = init_matrix(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
@@ -188,7 +188,7 @@ double ikj_benchmark(size_t rows, size_t inner, size_t cols,
 
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    struct Matrix c = matmul_ikj(&a, &b);
+    Matrix c = matmul_ikj(&a, &b);
     double end = now_seconds();
 
     if (!c.data) {
@@ -218,8 +218,8 @@ double blocked_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  struct Matrix a = init_matrix(rows, inner);
-  struct Matrix b = init_matrix(inner, cols);
+  Matrix a = init_matrix(rows, inner);
+  Matrix b = init_matrix(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
@@ -243,7 +243,7 @@ double blocked_benchmark(size_t rows, size_t inner, size_t cols,
 
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    struct Matrix c = matmul_blocked(&a, &b, block_size);
+    Matrix c = matmul_blocked(&a, &b, block_size);
     double end = now_seconds();
 
     if (!c.data) {
@@ -274,8 +274,8 @@ double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  struct Matrix a = init_matrix(rows, inner);
-  struct Matrix b = init_matrix(inner, cols);
+  Matrix a = init_matrix(rows, inner);
+  Matrix b = init_matrix(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
@@ -299,7 +299,7 @@ double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
 
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    struct Matrix c = matmul_threaded_blocked(&a, &b, num_threads, block_size);
+    Matrix c = matmul_threaded_blocked(&a, &b, num_threads, block_size);
     double end = now_seconds();
 
     if (!c.data) {
@@ -326,8 +326,9 @@ cleanup:
 void run_benchmark(size_t rows, size_t inner, size_t cols, size_t num_threads,
                    size_t block_size, size_t iterations) {
   printf("\n[benchmark]\n");
-  printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, block iterations: %zu\n", rows, inner,
-         inner, cols, num_threads, block_size, iterations);
+  printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, block "
+         "iterations: %zu\n",
+         rows, inner, inner, cols, num_threads, block_size, iterations);
 
   if (iterations == 0) {
     fprintf(stderr, "iterations must be greater than zero\n");

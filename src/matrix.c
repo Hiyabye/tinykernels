@@ -11,22 +11,22 @@ static size_t min_size(size_t a, size_t b) { return a < b ? a : b; }
 
 // Arguments structure for worker threads in matmul_threaded
 struct ThreadArgs {
-  const struct Matrix *a;
-  const struct Matrix *b;
-  struct Matrix *c;
+  const Matrix *a;
+  const Matrix *b;
+  Matrix *c;
   size_t row_start;
   size_t row_end;
   size_t block_size;
 };
 
 // Returns an empty matrix (0 rows, 0 cols, NULL data)
-struct Matrix empty_matrix(void) {
-  struct Matrix m = {0, 0, NULL};
+Matrix empty_matrix(void) {
+  Matrix m = {0, 0, NULL};
   return m;
 }
 
 // Initializes a matrix with given rows and columns, allocates memory for data
-struct Matrix init_matrix(size_t r, size_t c) {
+Matrix init_matrix(size_t r, size_t c) {
   if (r == 0 || c == 0) {
     fprintf(stderr, "invalid matrix dimensions\n");
     return empty_matrix();
@@ -37,7 +37,7 @@ struct Matrix init_matrix(size_t r, size_t c) {
     return empty_matrix();
   }
 
-  struct Matrix m = {r, c, NULL};
+  Matrix m = {r, c, NULL};
   m.data = calloc(r * c, sizeof(int));
   if (!m.data) {
     fprintf(stderr, "memory allocation failed\n");
@@ -47,7 +47,7 @@ struct Matrix init_matrix(size_t r, size_t c) {
 }
 
 // Prints the contents of a matrix to stdout
-void print_matrix(const struct Matrix *m) {
+void print_matrix(const Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
       printf("%d ", m->data[i * m->cols + j]);
@@ -57,7 +57,7 @@ void print_matrix(const struct Matrix *m) {
 }
 
 // Frees the memory allocated for a matrix and resets its fields
-void free_matrix(struct Matrix *m) {
+void free_matrix(Matrix *m) {
   if (!m || !m->data) {
     return;
   }
@@ -68,7 +68,7 @@ void free_matrix(struct Matrix *m) {
 }
 
 // Naive matrix multiplication implementation (single-threaded)
-struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b) {
+Matrix matmul_naive(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -79,7 +79,7 @@ struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b) {
     return empty_matrix();
   }
 
-  struct Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = init_matrix(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
     return empty_matrix();
@@ -101,9 +101,9 @@ struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b) {
 static void *matmul_worker(void *arg) {
   struct ThreadArgs *args = arg;
 
-  const struct Matrix *a = args->a;
-  const struct Matrix *b = args->b;
-  struct Matrix *c = args->c;
+  const Matrix *a = args->a;
+  const Matrix *b = args->b;
+  Matrix *c = args->c;
 
   for (size_t i = args->row_start; i < args->row_end; ++i) {
     for (size_t j = 0; j < b->cols; ++j) {
@@ -119,8 +119,7 @@ static void *matmul_worker(void *arg) {
 
 // Threaded matrix multiplication implementation, divides work among multiple
 // threads
-struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
-                              size_t num_threads) {
+Matrix matmul_threaded(const Matrix *a, const Matrix *b, size_t num_threads) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -140,7 +139,7 @@ struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
     num_threads = a->rows;
   }
 
-  struct Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = init_matrix(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
     return empty_matrix();
@@ -198,7 +197,7 @@ struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
   return c;
 }
 
-struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b) {
+Matrix matmul_ikj(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -209,7 +208,7 @@ struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b) {
     return empty_matrix();
   }
 
-  struct Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = init_matrix(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
     return empty_matrix();
@@ -226,8 +225,7 @@ struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b) {
   return c;
 }
 
-struct Matrix matmul_blocked(const struct Matrix *a, const struct Matrix *b,
-                             size_t block_size) {
+Matrix matmul_blocked(const Matrix *a, const Matrix *b, size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -243,7 +241,7 @@ struct Matrix matmul_blocked(const struct Matrix *a, const struct Matrix *b,
     return empty_matrix();
   }
 
-  struct Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = init_matrix(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
     return empty_matrix();
@@ -274,9 +272,9 @@ struct Matrix matmul_blocked(const struct Matrix *a, const struct Matrix *b,
 static void *matmul_blocked_worker(void *arg) {
   struct ThreadArgs *args = arg;
 
-  const struct Matrix *a = args->a;
-  const struct Matrix *b = args->b;
-  struct Matrix *c = args->c;
+  const Matrix *a = args->a;
+  const Matrix *b = args->b;
+  Matrix *c = args->c;
   size_t block_size = args->block_size;
 
   for (size_t i0 = args->row_start; i0 < args->row_end; i0 += block_size) {
@@ -302,9 +300,8 @@ static void *matmul_blocked_worker(void *arg) {
   return NULL;
 }
 
-struct Matrix matmul_threaded_blocked(const struct Matrix *a,
-                                      const struct Matrix *b,
-                                      size_t num_threads, size_t block_size) {
+Matrix matmul_threaded_blocked(const Matrix *a, const Matrix *b,
+                               size_t num_threads, size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
     return empty_matrix();
@@ -329,7 +326,7 @@ struct Matrix matmul_threaded_blocked(const struct Matrix *a,
     num_threads = a->rows;
   }
 
-  struct Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = init_matrix(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
     return empty_matrix();
