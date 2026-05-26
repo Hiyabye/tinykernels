@@ -21,5 +21,10 @@ struct Matrix matmul_naive(const struct Matrix *a, const struct Matrix *b);
 struct Matrix matmul_threaded(const struct Matrix *a, const struct Matrix *b,
                               size_t num_threads);
 struct Matrix matmul_ikj(const struct Matrix *a, const struct Matrix *b);
+struct Matrix matmul_blocked(const struct Matrix *a, const struct Matrix *b,
+                             size_t block_size);
+struct Matrix matmul_threaded_blocked(const struct Matrix *a,
+                                      const struct Matrix *b,
+                                      size_t num_threads, size_t block_size);
 
 #endif // MATRIX_H
