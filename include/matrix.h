@@ -3,11 +3,14 @@
 
 #include <stddef.h>
 
+// Element type for matrix entries
+typedef double mat_elem_t;
+
 // Matrix structure definition
 typedef struct Matrix {
   size_t rows;
   size_t cols;
-  int *data;
+  mat_elem_t *data;
 } Matrix;
 
 // Matrix utility functions

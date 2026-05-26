@@ -38,7 +38,7 @@ Matrix init_matrix(size_t r, size_t c) {
   }
 
   Matrix m = {r, c, NULL};
-  m.data = calloc(r * c, sizeof(int));
+  m.data = calloc(r * c, sizeof(mat_elem_t));
   if (!m.data) {
     fprintf(stderr, "memory allocation failed\n");
     return empty_matrix();
@@ -50,7 +50,7 @@ Matrix init_matrix(size_t r, size_t c) {
 void print_matrix(const Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
-      printf("%d ", m->data[i * m->cols + j]);
+      printf("%f ", m->data[i * m->cols + j]);
     }
     printf("\n");
   }
@@ -107,7 +107,7 @@ static void *matmul_worker(void *arg) {
 
   for (size_t i = args->row_start; i < args->row_end; ++i) {
     for (size_t j = 0; j < b->cols; ++j) {
-      int sum = 0;
+      mat_elem_t sum = 0;
       for (size_t k = 0; k < a->cols; ++k) {
         sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
       }
@@ -216,7 +216,7 @@ Matrix matmul_ikj(const Matrix *a, const Matrix *b) {
 
   for (size_t i = 0; i < a->rows; ++i) {
     for (size_t k = 0; k < a->cols; ++k) {
-      int aik = a->data[i * a->cols + k];
+      mat_elem_t aik = a->data[i * a->cols + k];
       for (size_t j = 0; j < b->cols; ++j) {
         c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
       }
@@ -256,7 +256,7 @@ Matrix matmul_blocked(const Matrix *a, const Matrix *b, size_t block_size) {
 
         for (size_t i = i0; i < i_max; ++i) {
           for (size_t k = k0; k < k_max; ++k) {
-            int aik = a->data[i * a->cols + k];
+            mat_elem_t aik = a->data[i * a->cols + k];
 
             for (size_t j = j0; j < j_max; ++j) {
               c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
@@ -286,7 +286,7 @@ static void *matmul_blocked_worker(void *arg) {
 
         for (size_t i = i0; i < i_max; ++i) {
           for (size_t k = k0; k < k_max; ++k) {
-            int aik = a->data[i * a->cols + k];
+            mat_elem_t aik = a->data[i * a->cols + k];
 
             for (size_t j = j0; j < j_max; ++j) {
               c->data[i * c->cols + j] += aik * b->data[k * b->cols + j];
