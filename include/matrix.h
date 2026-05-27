@@ -5,15 +5,15 @@
 
 typedef double mat_elem_t;
 
-typedef struct Matrix {
+typedef struct {
   size_t rows;
   size_t cols;
   mat_elem_t *data;
 } Matrix;
 
-Matrix empty_matrix(void);
-Matrix init_matrix(size_t r, size_t c);
-void print_matrix(const Matrix *mat);
-void free_matrix(Matrix *mat);
+Matrix matrix_new(size_t rows, size_t cols);
+void matrix_free(Matrix *m);
+void matrix_fill(Matrix *m, mat_elem_t value);
+void matrix_print(const Matrix *m);
 
 #endif // MATRIX_H

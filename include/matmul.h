@@ -17,6 +17,7 @@ typedef struct {
   size_t block_size;
 } MatmulConfig;
 
-Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig config);
+Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg);
+const char *matmul_kernel_name(MatmulKernel kernel);
 
 #endif // MATMUL_H

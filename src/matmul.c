@@ -19,18 +19,18 @@ struct ThreadArgs {
 static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
-  Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = matrix_new(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   for (size_t i = 0; i < a->rows; ++i) {
@@ -47,18 +47,18 @@ static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
 static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
-  Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = matrix_new(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   for (size_t i = 0; i < a->rows; ++i) {
@@ -76,23 +76,23 @@ static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
                                      size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
-  Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = matrix_new(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   for (size_t i0 = 0; i0 < a->rows; i0 += block_size) {
@@ -140,27 +140,27 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
                                   size_t num_threads) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (num_threads == 0) {
     fprintf(stderr, "num_threads must be greater than zero\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (num_threads > a->rows) {
     num_threads = a->rows;
   }
 
-  Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = matrix_new(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
@@ -170,8 +170,8 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
     fprintf(stderr, "memory allocation failed\n");
     free(threads);
     free(args);
-    free_matrix(&c);
-    return empty_matrix();
+    matrix_free(&c);
+    return (Matrix){0, 0, NULL};
   }
 
   size_t rows_per_thread = a->rows / num_threads;
@@ -201,8 +201,8 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
 
       free(threads);
       free(args);
-      free_matrix(&c);
-      return empty_matrix();
+      matrix_free(&c);
+      return (Matrix){0, 0, NULL};
     }
   }
 
@@ -252,32 +252,32 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
                                           size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (num_threads == 0) {
     fprintf(stderr, "num_threads must be greater than zero\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   if (num_threads > a->rows) {
     num_threads = a->rows;
   }
 
-  Matrix c = init_matrix(a->rows, b->cols);
+  Matrix c = matrix_new(a->rows, b->cols);
   if (!c.data) {
     fprintf(stderr, "failed to initialize result matrix\n");
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
   }
 
   pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
@@ -287,8 +287,8 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
     fprintf(stderr, "memory allocation failed\n");
     free(threads);
     free(args);
-    free_matrix(&c);
-    return empty_matrix();
+    matrix_free(&c);
+    return (Matrix){0, 0, NULL};
   }
 
   size_t rows_per_thread = a->rows / num_threads;
@@ -319,8 +319,8 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
 
       free(threads);
       free(args);
-      free_matrix(&c);
-      return empty_matrix();
+      matrix_free(&c);
+      return (Matrix){0, 0, NULL};
     }
   }
 
@@ -347,6 +347,23 @@ Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
   case MATMUL_PAR_ROWS_BLOCKED_IKJ:
     return matmul_par_rows_blocked_ikj(a, b, cfg.num_threads, cfg.block_size);
   default:
-    return empty_matrix();
+    return (Matrix){0, 0, NULL};
+  }
+}
+
+const char *matmul_kernel_name(MatmulKernel kernel) {
+  switch (kernel) {
+  case MATMUL_REF_IJK:
+    return "Reference IJK";
+  case MATMUL_SEQ_IKJ:
+    return "Sequential IKJ";
+  case MATMUL_SEQ_BLOCKED_IKJ:
+    return "Sequential Blocked IKJ";
+  case MATMUL_PAR_ROWS_IJK:
+    return "Parallel Rows IJK";
+  case MATMUL_PAR_ROWS_BLOCKED_IKJ:
+    return "Parallel Rows Blocked IKJ";
+  default:
+    return "Unknown";
   }
 }

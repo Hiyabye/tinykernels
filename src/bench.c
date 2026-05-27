@@ -2,6 +2,7 @@
 #include "matmul.h"
 #include "matrix.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -48,24 +49,24 @@ static double median(double *values, size_t n) {
 
 static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
                                    size_t iterations) {
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  matrix_fill(&a, 1.0);
+  matrix_fill(&b, 1.0);
 
   double *naive_times = malloc(sizeof(double) * iterations);
   if (!naive_times) {
     fprintf(stderr, "memory allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -83,33 +84,33 @@ static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
 
     if (!c.data) {
       fprintf(stderr, "naive benchmark failed\n");
-      free_matrix(&c);
+      matrix_free(&c);
       goto cleanup;
     }
 
     naive_times[i] = end - start;
-    free_matrix(&c);
+    matrix_free(&c);
   }
 
   result = median(naive_times, iterations);
 
 cleanup:
   free(naive_times);
-  free_matrix(&a);
-  free_matrix(&b);
+  matrix_free(&a);
+  matrix_free(&b);
 
   return result;
 }
 
 static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
                                         size_t num_threads, size_t iterations) {
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -119,8 +120,8 @@ static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
   double *threaded_times = malloc(sizeof(double) * iterations);
   if (!threaded_times) {
     fprintf(stderr, "memory allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -138,33 +139,33 @@ static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
 
     if (!c.data) {
       fprintf(stderr, "threaded benchmark failed\n");
-      free_matrix(&c);
+      matrix_free(&c);
       goto cleanup;
     }
 
     threaded_times[i] = end - start;
-    free_matrix(&c);
+    matrix_free(&c);
   }
 
   result = median(threaded_times, iterations);
 
 cleanup:
   free(threaded_times);
-  free_matrix(&a);
-  free_matrix(&b);
+  matrix_free(&a);
+  matrix_free(&b);
 
   return result;
 }
 
 static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
                                    size_t iterations) {
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -174,8 +175,8 @@ static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
   double *ikj_times = malloc(sizeof(double) * iterations);
   if (!ikj_times) {
     fprintf(stderr, "memory allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -193,20 +194,20 @@ static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
 
     if (!c.data) {
       fprintf(stderr, "ikj benchmark failed\n");
-      free_matrix(&c);
+      matrix_free(&c);
       goto cleanup;
     }
 
     ikj_times[i] = end - start;
-    free_matrix(&c);
+    matrix_free(&c);
   }
 
   result = median(ikj_times, iterations);
 
 cleanup:
   free(ikj_times);
-  free_matrix(&a);
-  free_matrix(&b);
+  matrix_free(&a);
+  matrix_free(&b);
 
   return result;
 }
@@ -219,13 +220,13 @@ static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
     return -1.0;
   }
 
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -235,8 +236,8 @@ static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
   double *blocked_times = malloc(sizeof(double) * iterations);
   if (!blocked_times) {
     fprintf(stderr, "memory allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -254,20 +255,20 @@ static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
 
     if (!c.data) {
       fprintf(stderr, "blocked benchmark failed\n");
-      free_matrix(&c);
+      matrix_free(&c);
       goto cleanup;
     }
 
     blocked_times[i] = end - start;
-    free_matrix(&c);
+    matrix_free(&c);
   }
 
   result = median(blocked_times, iterations);
 
 cleanup:
   free(blocked_times);
-  free_matrix(&a);
-  free_matrix(&b);
+  matrix_free(&a);
+  matrix_free(&b);
 
   return result;
 }
@@ -281,13 +282,13 @@ static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
     return -1.0;
   }
 
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "benchmark matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -297,8 +298,8 @@ static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
   double *threaded_blocked_times = malloc(sizeof(double) * iterations);
   if (!threaded_blocked_times) {
     fprintf(stderr, "memory allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return -1.0;
   }
 
@@ -316,25 +317,26 @@ static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
 
     if (!c.data) {
       fprintf(stderr, "threaded blocked benchmark failed\n");
-      free_matrix(&c);
+      matrix_free(&c);
       goto cleanup;
     }
 
     threaded_blocked_times[i] = end - start;
-    free_matrix(&c);
+    matrix_free(&c);
   }
   result = median(threaded_blocked_times, iterations);
 
 cleanup:
   free(threaded_blocked_times);
-  free_matrix(&a);
-  free_matrix(&b);
+  matrix_free(&a);
+  matrix_free(&b);
 
   return result;
 }
 
-void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads,
-                    size_t block_size, size_t iterations) {
+static void bench_run_case(size_t rows, size_t inner, size_t cols,
+                           size_t threads, size_t block_size,
+                           size_t iterations) {
   printf("\n[benchmark]\n");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
          "%zu\n",

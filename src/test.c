@@ -38,13 +38,13 @@ void test_matmul_correctness(void) {
   size_t inner = 10;
   size_t cols = 10;
 
-  Matrix a = init_matrix(rows, inner);
-  Matrix b = init_matrix(inner, cols);
+  Matrix a = matrix_new(rows, inner);
+  Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
     fprintf(stderr, "test matrix allocation failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
+    matrix_free(&a);
+    matrix_free(&b);
     return;
   }
 
@@ -89,13 +89,13 @@ void test_matmul_correctness(void) {
   if (!c_ref.data || !c_ikj.data || !c_blocked.data || !c_threaded.data ||
       !c_threaded_blocked.data) {
     fprintf(stderr, "test matrix multiplication failed\n");
-    free_matrix(&a);
-    free_matrix(&b);
-    free_matrix(&c_ref);
-    free_matrix(&c_ikj);
-    free_matrix(&c_blocked);
-    free_matrix(&c_threaded);
-    free_matrix(&c_threaded_blocked);
+    matrix_free(&a);
+    matrix_free(&b);
+    matrix_free(&c_ref);
+    matrix_free(&c_ikj);
+    matrix_free(&c_blocked);
+    matrix_free(&c_threaded);
+    matrix_free(&c_threaded_blocked);
     return;
   }
 
@@ -123,11 +123,11 @@ void test_matmul_correctness(void) {
     printf("threaded blocked result matches reference\n");
   }
 
-  free_matrix(&a);
-  free_matrix(&b);
-  free_matrix(&c_ref);
-  free_matrix(&c_ikj);
-  free_matrix(&c_blocked);
-  free_matrix(&c_threaded);
-  free_matrix(&c_threaded_blocked);
+  matrix_free(&a);
+  matrix_free(&b);
+  matrix_free(&c_ref);
+  matrix_free(&c_ikj);
+  matrix_free(&c_blocked);
+  matrix_free(&c_threaded);
+  matrix_free(&c_threaded_blocked);
 }
