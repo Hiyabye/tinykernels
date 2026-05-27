@@ -1,23 +1,28 @@
 # Parallel Matrix Multiplication
 
-A learning-oriented ML kernel project that implements and benchmarks matrix multiplication and related tensor operations from scratch.
+A learning-oriented CPU kernel project for implementing and benchmarking matrix multiplication optimizations from scratch.
 
-## Features
+## Current scope
 
-- Dynamic matrix allocation
-- Naive matrix multiplication
-- Row-partitioned pthread matrix multiplication
+- Dense matrix allocation
+- Reference IJK matrix multiplication
+- Cache-friendly IKJ multiplication
+- Blocked matrix multiplication
+- Row-partitioned pthread multiplication
 - Median-based benchmarking
 
-## Build
+## Roadmap
+
+- C++ port with RAII
+- SIMD/vectorization
+- CUDA backend
+- Linear layer forward pass
+- Activation and normalization kernels
+
+## Build & Run
 
 ```bash
 make
-```
-
-## Run
-
-```bash
 make run
 ```
 
@@ -32,14 +37,4 @@ make debug
 ```bash
 make sanitize
 make run
-```
-
-## Example
-
-```text
-[benchmark]
-A: 1000x1000, B: 1000x1000, threads: 10, iterations: 10
-naive median:    ...
-threaded median: ...
-speedup:         ...
 ```
