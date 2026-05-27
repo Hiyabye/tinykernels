@@ -47,13 +47,12 @@ static double median(double *values, size_t n) {
   return (values[n / 2 - 1] + values[n / 2]) / 2.0;
 }
 
-static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
-                                   size_t iterations) {
+static double bench_kernel(size_t rows, size_t inner, size_t cols,
+                           MatmulConfig cfg, size_t iterations) {
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
 
   if (!a.data || !b.data) {
-    fprintf(stderr, "benchmark matrix allocation failed\n");
     matrix_free(&a);
     matrix_free(&b);
     return -1.0;
@@ -62,275 +61,35 @@ static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
   bench_matrix_fill(&a);
   bench_matrix_fill(&b);
 
-  double *naive_times = malloc(sizeof(double) * iterations);
-  if (!naive_times) {
-    fprintf(stderr, "memory allocation failed\n");
+  double *times = malloc(sizeof(double) * iterations);
+  if (!times) {
     matrix_free(&a);
     matrix_free(&b);
     return -1.0;
   }
 
-  MatmulConfig cfg = {
-      .kernel = MATMUL_REF_IJK,
-      .num_threads = 1,
-      .block_size = 1,
-  };
-
   double result = -1.0;
+
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
     Matrix c = matmul(&a, &b, cfg);
     double end = now_seconds();
 
     if (!c.data) {
-      fprintf(stderr, "naive benchmark failed\n");
       matrix_free(&c);
       goto cleanup;
     }
 
-    naive_times[i] = end - start;
+    times[i] = end - start;
     matrix_free(&c);
   }
 
-  result = median(naive_times, iterations);
+  result = median(times, iterations);
 
 cleanup:
-  free(naive_times);
+  free(times);
   matrix_free(&a);
   matrix_free(&b);
-
-  return result;
-}
-
-static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
-                                        size_t num_threads, size_t iterations) {
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-
-  if (!a.data || !b.data) {
-    fprintf(stderr, "benchmark matrix allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  bench_matrix_fill(&a);
-  bench_matrix_fill(&b);
-
-  double *threaded_times = malloc(sizeof(double) * iterations);
-  if (!threaded_times) {
-    fprintf(stderr, "memory allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  MatmulConfig cfg = {
-      .kernel = MATMUL_PAR_ROWS_IJK,
-      .num_threads = num_threads,
-      .block_size = 1,
-  };
-
-  double result = -1.0;
-  for (size_t i = 0; i < iterations; ++i) {
-    double start = now_seconds();
-    Matrix c = matmul(&a, &b, cfg);
-    double end = now_seconds();
-
-    if (!c.data) {
-      fprintf(stderr, "threaded benchmark failed\n");
-      matrix_free(&c);
-      goto cleanup;
-    }
-
-    threaded_times[i] = end - start;
-    matrix_free(&c);
-  }
-
-  result = median(threaded_times, iterations);
-
-cleanup:
-  free(threaded_times);
-  matrix_free(&a);
-  matrix_free(&b);
-
-  return result;
-}
-
-static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
-                                   size_t iterations) {
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-
-  if (!a.data || !b.data) {
-    fprintf(stderr, "benchmark matrix allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  bench_matrix_fill(&a);
-  bench_matrix_fill(&b);
-
-  double *ikj_times = malloc(sizeof(double) * iterations);
-  if (!ikj_times) {
-    fprintf(stderr, "memory allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  MatmulConfig cfg = {
-      .kernel = MATMUL_SEQ_IKJ,
-      .num_threads = 1,
-      .block_size = 1,
-  };
-
-  double result = -1.0;
-  for (size_t i = 0; i < iterations; ++i) {
-    double start = now_seconds();
-    Matrix c = matmul(&a, &b, cfg);
-    double end = now_seconds();
-
-    if (!c.data) {
-      fprintf(stderr, "ikj benchmark failed\n");
-      matrix_free(&c);
-      goto cleanup;
-    }
-
-    ikj_times[i] = end - start;
-    matrix_free(&c);
-  }
-
-  result = median(ikj_times, iterations);
-
-cleanup:
-  free(ikj_times);
-  matrix_free(&a);
-  matrix_free(&b);
-
-  return result;
-}
-
-static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
-                                           size_t cols, size_t block_size,
-                                           size_t iterations) {
-  if (block_size == 0) {
-    fprintf(stderr, "block_size must be greater than zero\n");
-    return -1.0;
-  }
-
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-
-  if (!a.data || !b.data) {
-    fprintf(stderr, "benchmark matrix allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  bench_matrix_fill(&a);
-  bench_matrix_fill(&b);
-
-  double *blocked_times = malloc(sizeof(double) * iterations);
-  if (!blocked_times) {
-    fprintf(stderr, "memory allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  MatmulConfig cfg = {
-      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
-      .num_threads = 1,
-      .block_size = block_size,
-  };
-
-  double result = -1.0;
-  for (size_t i = 0; i < iterations; ++i) {
-    double start = now_seconds();
-    Matrix c = matmul(&a, &b, cfg);
-    double end = now_seconds();
-
-    if (!c.data) {
-      fprintf(stderr, "blocked benchmark failed\n");
-      matrix_free(&c);
-      goto cleanup;
-    }
-
-    blocked_times[i] = end - start;
-    matrix_free(&c);
-  }
-
-  result = median(blocked_times, iterations);
-
-cleanup:
-  free(blocked_times);
-  matrix_free(&a);
-  matrix_free(&b);
-
-  return result;
-}
-
-static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
-                                                size_t cols, size_t num_threads,
-                                                size_t block_size,
-                                                size_t iterations) {
-  if (block_size == 0) {
-    fprintf(stderr, "block_size must be greater than zero\n");
-    return -1.0;
-  }
-
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-
-  if (!a.data || !b.data) {
-    fprintf(stderr, "benchmark matrix allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  bench_matrix_fill(&a);
-  bench_matrix_fill(&b);
-
-  double *threaded_blocked_times = malloc(sizeof(double) * iterations);
-  if (!threaded_blocked_times) {
-    fprintf(stderr, "memory allocation failed\n");
-    matrix_free(&a);
-    matrix_free(&b);
-    return -1.0;
-  }
-
-  MatmulConfig cfg = {
-      .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
-      .num_threads = num_threads,
-      .block_size = block_size,
-  };
-
-  double result = -1.0;
-  for (size_t i = 0; i < iterations; ++i) {
-    double start = now_seconds();
-    Matrix c = matmul(&a, &b, cfg);
-    double end = now_seconds();
-
-    if (!c.data) {
-      fprintf(stderr, "threaded blocked benchmark failed\n");
-      matrix_free(&c);
-      goto cleanup;
-    }
-
-    threaded_blocked_times[i] = end - start;
-    matrix_free(&c);
-  }
-  result = median(threaded_blocked_times, iterations);
-
-cleanup:
-  free(threaded_blocked_times);
-  matrix_free(&a);
-  matrix_free(&b);
-
   return result;
 }
 
@@ -347,40 +106,74 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols,
     return;
   }
 
-  double naive_median = bench_matmul_ref_ijk(rows, inner, cols, iterations);
-  double threaded_median =
-      bench_matmul_par_rows_ijk(rows, inner, cols, threads, iterations);
-  double ikj_median = bench_matmul_seq_ikj(rows, inner, cols, iterations);
-  double blocked_median =
-      bench_matmul_seq_blocked_ikj(rows, inner, cols, block_size, iterations);
-  double threaded_blocked_median = bench_matmul_par_rows_blocked_ikj(
-      rows, inner, cols, threads, block_size, iterations);
+  MatmulConfig ref_ijk_cfg = {
+      .kernel = MATMUL_REF_IJK,
+      .num_threads = 1,
+      .block_size = 1,
+  };
+  double ref_ijk_median =
+      bench_kernel(rows, inner, cols, ref_ijk_cfg, iterations);
 
-  if (naive_median < 0.0 || threaded_median < 0.0 || ikj_median < 0.0 ||
-      blocked_median < 0.0 || threaded_blocked_median < 0.0) {
+  MatmulConfig seq_ikj_cfg = {
+      .kernel = MATMUL_PAR_ROWS_IJK,
+      .num_threads = threads,
+      .block_size = 1,
+  };
+  double seq_ikj_median =
+      bench_kernel(rows, inner, cols, seq_ikj_cfg, iterations);
+
+  MatmulConfig seq_blocked_ikj_cfg = {
+      .kernel = MATMUL_SEQ_IKJ,
+      .num_threads = 1,
+      .block_size = 1,
+  };
+  double seq_blocked_ikj_median =
+      bench_kernel(rows, inner, cols, seq_blocked_ikj_cfg, iterations);
+
+  MatmulConfig par_rows_ijk_cfg = {
+      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
+      .num_threads = 1,
+      .block_size = block_size,
+  };
+  double par_rows_ijk_median =
+      bench_kernel(rows, inner, cols, par_rows_ijk_cfg, iterations);
+
+  MatmulConfig par_rows_blocked_ikj_cfg = {
+      .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
+      .num_threads = threads,
+      .block_size = block_size,
+  };
+  double par_rows_blocked_ikj_median =
+      bench_kernel(rows, inner, cols, par_rows_blocked_ikj_cfg, iterations);
+
+  if (ref_ijk_median < 0.0 || seq_ikj_median < 0.0 ||
+      seq_blocked_ikj_median < 0.0 || par_rows_ijk_median < 0.0 ||
+      par_rows_blocked_ikj_median < 0.0) {
     fprintf(stderr, "benchmark failed\n");
     return;
   }
 
-  printf("naive median:             %.6f sec\n", naive_median);
-  printf("threaded median:          %.6f sec\n", threaded_median);
-  printf("ikj median:               %.6f sec\n", ikj_median);
-  printf("blocked median:           %.6f sec\n", blocked_median);
-  printf("threaded blocked median:  %.6f sec\n", threaded_blocked_median);
-
-  if (threaded_median > 0.0) {
-    printf("threaded speedup:         %.2fx\n", naive_median / threaded_median);
-  }
-  if (ikj_median > 0.0) {
-    printf("ikj speedup:              %.2fx\n", naive_median / ikj_median);
-  }
-  if (blocked_median > 0.0) {
-    printf("blocked speedup:          %.2fx\n", naive_median / blocked_median);
-  }
-  if (threaded_blocked_median > 0.0) {
-    printf("threaded blocked speedup: %.2fx\n",
-           naive_median / threaded_blocked_median);
-  }
+  printf("-----------------------------------------------------\n");
+  printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel),
+         ref_ijk_median);
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel),
+         seq_ikj_median,
+         seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n",
+         matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
+         par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median
+                                   : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n",
+         matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
+         seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median
+                                      : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n",
+         matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel),
+         par_rows_blocked_ikj_median,
+         par_rows_blocked_ikj_median > 0.0
+             ? ref_ijk_median / par_rows_blocked_ikj_median
+             : 0.0);
+  printf("-----------------------------------------------------\n");
 }
 
 void bench_run_default_suite(void) {
