@@ -13,7 +13,7 @@ static double now_seconds(void) {
   return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-static void fill_matrix(Matrix *m) {
+static void bench_matrix_fill(Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
       m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
@@ -59,8 +59,8 @@ static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  matrix_fill(&a, 1.0);
-  matrix_fill(&b, 1.0);
+  bench_matrix_fill(&a);
+  bench_matrix_fill(&b);
 
   double *naive_times = malloc(sizeof(double) * iterations);
   if (!naive_times) {
@@ -114,8 +114,8 @@ static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  bench_matrix_fill(&a);
+  bench_matrix_fill(&b);
 
   double *threaded_times = malloc(sizeof(double) * iterations);
   if (!threaded_times) {
@@ -169,8 +169,8 @@ static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
     return -1.0;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  bench_matrix_fill(&a);
+  bench_matrix_fill(&b);
 
   double *ikj_times = malloc(sizeof(double) * iterations);
   if (!ikj_times) {
@@ -230,8 +230,8 @@ static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
     return -1.0;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  bench_matrix_fill(&a);
+  bench_matrix_fill(&b);
 
   double *blocked_times = malloc(sizeof(double) * iterations);
   if (!blocked_times) {
@@ -292,8 +292,8 @@ static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
     return -1.0;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  bench_matrix_fill(&a);
+  bench_matrix_fill(&b);
 
   double *threaded_blocked_times = malloc(sizeof(double) * iterations);
   if (!threaded_blocked_times) {

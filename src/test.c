@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-static void fill_matrix(Matrix *m) {
+static void test_matrix_fill(Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
       m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
@@ -48,8 +48,8 @@ void test_matmul_correctness(void) {
     return;
   }
 
-  fill_matrix(&a);
-  fill_matrix(&b);
+  test_matrix_fill(&a);
+  test_matrix_fill(&b);
 
   MatmulConfig cfg_ref = {
       .kernel = MATMUL_REF_IJK,
