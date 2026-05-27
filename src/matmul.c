@@ -6,7 +6,6 @@
 
 static inline size_t min_size(size_t a, size_t b) { return a < b ? a : b; }
 
-// arguments structure for parallel blocked worker threads
 struct ThreadArgs {
   const Matrix *a;
   const Matrix *b;
@@ -16,7 +15,6 @@ struct ThreadArgs {
   size_t block_size;
 };
 
-// naive reference implementation (ijk order)
 static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
@@ -45,7 +43,6 @@ static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
   return c;
 }
 
-// optimized sequential implementation (ikj order)
 static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
@@ -74,7 +71,6 @@ static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
   return c;
 }
 
-// blocked implementation (ikj order)
 static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
                                      size_t block_size) {
   if (!a || !b || !a->data || !b->data) {
@@ -139,7 +135,6 @@ static void *matmul_par_rows_ijk_worker(void *arg) {
   return NULL;
 }
 
-// parallel implementation that divides work by rows (ijk order)
 static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
                                   size_t num_threads) {
   if (!a || !b || !a->data || !b->data) {
@@ -251,7 +246,6 @@ static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
   return NULL;
 }
 
-// parallel blocked implementation that divides work by rows (ikj order)
 static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
                                           size_t num_threads,
                                           size_t block_size) {

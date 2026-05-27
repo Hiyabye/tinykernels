@@ -5,13 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Returns an empty matrix (0 rows, 0 cols, NULL data)
 Matrix empty_matrix(void) {
   Matrix m = {0, 0, NULL};
   return m;
 }
 
-// Initializes a matrix with given rows and columns, allocates memory for data
 Matrix init_matrix(size_t r, size_t c) {
   if (r == 0 || c == 0) {
     fprintf(stderr, "invalid matrix dimensions\n");
@@ -32,7 +30,6 @@ Matrix init_matrix(size_t r, size_t c) {
   return m;
 }
 
-// Prints the contents of a matrix to stdout
 void print_matrix(const Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
@@ -42,7 +39,6 @@ void print_matrix(const Matrix *m) {
   }
 }
 
-// Frees the memory allocated for a matrix and resets its fields
 void free_matrix(Matrix *m) {
   if (!m || !m->data) {
     return;

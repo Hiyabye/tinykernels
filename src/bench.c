@@ -6,16 +6,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-// Returns the current time in seconds with high resolution, using
-// CLOCK_MONOTONIC
 static double now_seconds(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-// Fills a matrix with deterministic values based on row and column indices, for
-// testing
 static void fill_matrix(Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
@@ -24,8 +20,6 @@ static void fill_matrix(Matrix *m) {
   }
 }
 
-// Comparison function for qsort to sort an array of doubles, used for median
-// calculation
 static int compare_double(const void *a, const void *b) {
   double x = *(const double *)a;
   double y = *(const double *)b;
@@ -39,8 +33,6 @@ static int compare_double(const void *a, const void *b) {
   }
 }
 
-// Computes the median of an array of doubles, used to summarize benchmark
-// results
 static double median(double *values, size_t n) {
   if (!values || n == 0) {
     return -1.0;
@@ -54,9 +46,6 @@ static double median(double *values, size_t n) {
   return (values[n / 2 - 1] + values[n / 2]) / 2.0;
 }
 
-// Runs a benchmark for the naive matrix multiplication implementation,
-// measuring execution time and returning the median time over multiple
-// iterations
 static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
                                    size_t iterations) {
   Matrix a = init_matrix(rows, inner);
@@ -112,9 +101,6 @@ cleanup:
   return result;
 }
 
-// Runs a benchmark for the threaded matrix multiplication implementation,
-// measuring execution time and returning the median time over multiple
-// iterations
 static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
                                         size_t num_threads, size_t iterations) {
   Matrix a = init_matrix(rows, inner);
@@ -170,8 +156,6 @@ cleanup:
   return result;
 }
 
-// Runs a benchmark for the ikj matrix multiplication implementation, measuring
-// execution time and returning the median time over multiple iterations
 static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
                                    size_t iterations) {
   Matrix a = init_matrix(rows, inner);
