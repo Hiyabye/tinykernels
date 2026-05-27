@@ -57,8 +57,8 @@ static double median(double *values, size_t n) {
 // Runs a benchmark for the naive matrix multiplication implementation,
 // measuring execution time and returning the median time over multiple
 // iterations
-double naive_benchmark(size_t rows, size_t inner, size_t cols,
-                       size_t iterations) {
+static double naive_benchmark(size_t rows, size_t inner, size_t cols,
+                              size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -115,8 +115,8 @@ cleanup:
 // Runs a benchmark for the threaded matrix multiplication implementation,
 // measuring execution time and returning the median time over multiple
 // iterations
-double threaded_benchmark(size_t rows, size_t inner, size_t cols,
-                          size_t num_threads, size_t iterations) {
+static double threaded_benchmark(size_t rows, size_t inner, size_t cols,
+                                 size_t num_threads, size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -172,8 +172,8 @@ cleanup:
 
 // Runs a benchmark for the ikj matrix multiplication implementation, measuring
 // execution time and returning the median time over multiple iterations
-double ikj_benchmark(size_t rows, size_t inner, size_t cols,
-                     size_t iterations) {
+static double ikj_benchmark(size_t rows, size_t inner, size_t cols,
+                            size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -227,8 +227,8 @@ cleanup:
   return result;
 }
 
-double blocked_benchmark(size_t rows, size_t inner, size_t cols,
-                         size_t block_size, size_t iterations) {
+static double blocked_benchmark(size_t rows, size_t inner, size_t cols,
+                                size_t block_size, size_t iterations) {
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
     return -1.0;
@@ -287,9 +287,9 @@ cleanup:
   return result;
 }
 
-double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
-                                  size_t num_threads, size_t block_size,
-                                  size_t iterations) {
+static double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
+                                         size_t num_threads, size_t block_size,
+                                         size_t iterations) {
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
     return -1.0;
@@ -349,8 +349,9 @@ cleanup:
 
 // Runs benchmarks for naive and threaded matrix multiplication, measuring
 // execution
-void run_benchmark(size_t rows, size_t inner, size_t cols, size_t num_threads,
-                   size_t block_size, size_t iterations) {
+static void run_benchmark(size_t rows, size_t inner, size_t cols,
+                          size_t num_threads, size_t block_size,
+                          size_t iterations) {
   printf("\n[benchmark]\n");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, block "
          "iterations: %zu\n",
@@ -395,4 +396,21 @@ void run_benchmark(size_t rows, size_t inner, size_t cols, size_t num_threads,
     printf("threaded blocked speedup: %.2fx\n",
            naive_median / threaded_blocked_median);
   }
+}
+
+void bench_run_default_suite(void) {
+  // matrix sizes
+  run_benchmark(128, 128, 128, 1, 128, 100);
+  run_benchmark(256, 256, 256, 1, 256, 100);
+  run_benchmark(512, 512, 512, 1, 512, 100);
+
+  // thread count
+  run_benchmark(512, 512, 512, 2, 512, 100);
+  run_benchmark(512, 512, 512, 4, 512, 100);
+  run_benchmark(512, 512, 512, 8, 512, 100);
+
+  // block size
+  run_benchmark(512, 512, 512, 1, 32, 100);
+  run_benchmark(512, 512, 512, 1, 64, 100);
+  run_benchmark(512, 512, 512, 1, 128, 100);
 }
