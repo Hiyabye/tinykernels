@@ -57,8 +57,8 @@ static double median(double *values, size_t n) {
 // Runs a benchmark for the naive matrix multiplication implementation,
 // measuring execution time and returning the median time over multiple
 // iterations
-static double naive_benchmark(size_t rows, size_t inner, size_t cols,
-                              size_t iterations) {
+static double bench_matmul_ref_ijk(size_t rows, size_t inner, size_t cols,
+                                   size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -115,8 +115,8 @@ cleanup:
 // Runs a benchmark for the threaded matrix multiplication implementation,
 // measuring execution time and returning the median time over multiple
 // iterations
-static double threaded_benchmark(size_t rows, size_t inner, size_t cols,
-                                 size_t num_threads, size_t iterations) {
+static double bench_matmul_par_rows_ijk(size_t rows, size_t inner, size_t cols,
+                                        size_t num_threads, size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -172,8 +172,8 @@ cleanup:
 
 // Runs a benchmark for the ikj matrix multiplication implementation, measuring
 // execution time and returning the median time over multiple iterations
-static double ikj_benchmark(size_t rows, size_t inner, size_t cols,
-                            size_t iterations) {
+static double bench_matmul_seq_ikj(size_t rows, size_t inner, size_t cols,
+                                   size_t iterations) {
   Matrix a = init_matrix(rows, inner);
   Matrix b = init_matrix(inner, cols);
 
@@ -227,8 +227,9 @@ cleanup:
   return result;
 }
 
-static double blocked_benchmark(size_t rows, size_t inner, size_t cols,
-                                size_t block_size, size_t iterations) {
+static double bench_matmul_seq_blocked_ikj(size_t rows, size_t inner,
+                                           size_t cols, size_t block_size,
+                                           size_t iterations) {
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
     return -1.0;
@@ -287,9 +288,10 @@ cleanup:
   return result;
 }
 
-static double threaded_blocked_benchmark(size_t rows, size_t inner, size_t cols,
-                                         size_t num_threads, size_t block_size,
-                                         size_t iterations) {
+static double bench_matmul_par_rows_blocked_ikj(size_t rows, size_t inner,
+                                                size_t cols, size_t num_threads,
+                                                size_t block_size,
+                                                size_t iterations) {
   if (block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
     return -1.0;
@@ -347,29 +349,26 @@ cleanup:
   return result;
 }
 
-// Runs benchmarks for naive and threaded matrix multiplication, measuring
-// execution
-static void run_benchmark(size_t rows, size_t inner, size_t cols,
-                          size_t num_threads, size_t block_size,
-                          size_t iterations) {
+void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads,
+                    size_t block_size, size_t iterations) {
   printf("\n[benchmark]\n");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
          "%zu\n",
-         rows, inner, inner, cols, num_threads, block_size, iterations);
+         rows, inner, inner, cols, threads, block_size, iterations);
 
   if (iterations == 0) {
     fprintf(stderr, "iterations must be greater than zero\n");
     return;
   }
 
-  double naive_median = naive_benchmark(rows, inner, cols, iterations);
+  double naive_median = bench_matmul_ref_ijk(rows, inner, cols, iterations);
   double threaded_median =
-      threaded_benchmark(rows, inner, cols, num_threads, iterations);
-  double ikj_median = ikj_benchmark(rows, inner, cols, iterations);
+      bench_matmul_par_rows_ijk(rows, inner, cols, threads, iterations);
+  double ikj_median = bench_matmul_seq_ikj(rows, inner, cols, iterations);
   double blocked_median =
-      blocked_benchmark(rows, inner, cols, block_size, iterations);
-  double threaded_blocked_median = threaded_blocked_benchmark(
-      rows, inner, cols, num_threads, block_size, iterations);
+      bench_matmul_seq_blocked_ikj(rows, inner, cols, block_size, iterations);
+  double threaded_blocked_median = bench_matmul_par_rows_blocked_ikj(
+      rows, inner, cols, threads, block_size, iterations);
 
   if (naive_median < 0.0 || threaded_median < 0.0 || ikj_median < 0.0 ||
       blocked_median < 0.0 || threaded_blocked_median < 0.0) {
@@ -400,17 +399,17 @@ static void run_benchmark(size_t rows, size_t inner, size_t cols,
 
 void bench_run_default_suite(void) {
   // matrix size sweep
-  run_benchmark(128, 128, 128, 1, 128, 100);
-  run_benchmark(256, 256, 256, 1, 256, 100);
-  run_benchmark(512, 512, 512, 1, 512, 100);
+  run_bench(128, 128, 128, 1, 128, 100);
+  run_bench(256, 256, 256, 1, 256, 100);
+  run_bench(512, 512, 512, 1, 512, 100);
 
   // thread count sweep
-  run_benchmark(512, 512, 512, 2, 512, 100);
-  run_benchmark(512, 512, 512, 4, 512, 100);
-  run_benchmark(512, 512, 512, 8, 512, 100);
+  run_bench(512, 512, 512, 2, 512, 100);
+  run_bench(512, 512, 512, 4, 512, 100);
+  run_bench(512, 512, 512, 8, 512, 100);
 
   // block size sweep
-  run_benchmark(512, 512, 512, 1, 32, 100);
-  run_benchmark(512, 512, 512, 1, 64, 100);
-  run_benchmark(512, 512, 512, 1, 128, 100);
+  run_bench(512, 512, 512, 1, 32, 100);
+  run_bench(512, 512, 512, 1, 64, 100);
+  run_bench(512, 512, 512, 1, 128, 100);
 }
