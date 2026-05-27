@@ -383,17 +383,17 @@ void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads,
 
 void bench_run_default_suite(void) {
   // matrix size sweep
-  run_bench(128, 128, 128, 1, 128, 100);
-  run_bench(256, 256, 256, 1, 256, 100);
-  run_bench(512, 512, 512, 1, 512, 100);
+  bench_run_case(128, 128, 128, 1, 128, 100);
+  bench_run_case(256, 256, 256, 1, 256, 100);
+  bench_run_case(512, 512, 512, 1, 512, 100);
 
   // thread count sweep
-  run_bench(512, 512, 512, 2, 512, 100);
-  run_bench(512, 512, 512, 4, 512, 100);
-  run_bench(512, 512, 512, 8, 512, 100);
+  bench_run_case(512, 512, 512, 2, 512, 100);
+  bench_run_case(512, 512, 512, 4, 512, 100);
+  bench_run_case(512, 512, 512, 8, 512, 100);
 
   // block size sweep
-  run_bench(512, 512, 512, 1, 32, 100);
-  run_bench(512, 512, 512, 1, 64, 100);
-  run_bench(512, 512, 512, 1, 128, 100);
+  bench_run_case(512, 512, 512, 1, 32, 100);
+  bench_run_case(512, 512, 512, 1, 64, 100);
+  bench_run_case(512, 512, 512, 1, 128, 100);
 }
