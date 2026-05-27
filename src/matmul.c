@@ -16,14 +16,22 @@ struct ThreadArgs {
   size_t block_size;
 };
 
-static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
+static int matmul_validate_inputs(const Matrix *a, const Matrix *b) {
   if (!a || !b || !a->data || !b->data) {
     fprintf(stderr, "invalid matrix\n");
-    return (Matrix){0, 0, NULL};
+    return 0;
   }
 
   if (a->cols != b->rows) {
     fprintf(stderr, "incompatible matrix dimensions\n");
+    return 0;
+  }
+
+  return 1;
+}
+
+static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
+  if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
 
@@ -45,13 +53,7 @@ static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
 }
 
 static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return (Matrix){0, 0, NULL};
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
+  if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
 
@@ -74,13 +76,7 @@ static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
 
 static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
                                      size_t block_size) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return (Matrix){0, 0, NULL};
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
+  if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
 
@@ -138,13 +134,7 @@ static void *matmul_par_rows_ijk_worker(void *arg) {
 
 static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
                                   size_t num_threads) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return (Matrix){0, 0, NULL};
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
+  if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
 
@@ -250,13 +240,7 @@ static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
 static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
                                           size_t num_threads,
                                           size_t block_size) {
-  if (!a || !b || !a->data || !b->data) {
-    fprintf(stderr, "invalid matrix\n");
-    return (Matrix){0, 0, NULL};
-  }
-
-  if (a->cols != b->rows) {
-    fprintf(stderr, "incompatible matrix dimensions\n");
+  if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
 
