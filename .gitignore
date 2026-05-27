@@ -1,5 +1,5 @@
 build/
-matmul
+tinykernels
 *.o
 *.d
 *.out

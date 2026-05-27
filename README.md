@@ -1,4 +1,4 @@
-# Parallel Matrix Multiplication
+# tinykernels
 
 A learning-oriented CPU kernel project for implementing and benchmarking matrix multiplication optimizations from scratch.
 

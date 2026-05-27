@@ -4,7 +4,7 @@ CPPFLAGS := -Iinclude
 LDFLAGS :=
 LDLIBS := -pthread
 
-TARGET := matmul
+TARGET := tinykernels
 
 SRC_DIR := src
 BUILD_DIR := build
