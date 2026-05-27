@@ -16,7 +16,14 @@ Matrix matrix_new(size_t rows, size_t cols) {
     return (Matrix){0, 0, NULL};
   }
 
-  Matrix m = {rows, cols, calloc(rows * cols, sizeof(mat_elem_t))};
+  size_t len = rows * cols;
+
+  if (len > SIZE_MAX / sizeof(mat_elem_t)) {
+    fprintf(stderr, "matrix byte size overflow\n");
+    return (Matrix){0, 0, NULL};
+  }
+
+  Matrix m = {rows, cols, calloc(len, sizeof(mat_elem_t))};
   if (!m.data) {
     fprintf(stderr, "memory allocation failed\n");
     return (Matrix){0, 0, NULL};
