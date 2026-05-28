@@ -68,12 +68,12 @@ static double bench_kernel(size_t rows, size_t inner, size_t cols, MatmulConfig 
     return -1.0;
   }
 
+  double result = -1.0;
   Matrix c = matrix_new(rows, cols);
   if (!c.data) {
     goto cleanup;
   }
 
-  double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
     int ok = matmul_into(&a, &b, &c, cfg);
