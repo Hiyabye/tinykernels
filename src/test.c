@@ -13,6 +13,7 @@
 #define COLOR_CYAN "\x1b[36m"
 #define COLOR_RESET "\x1b[0m"
 #define CHECK_MARK "\u2713"
+#define CROSS_MARK "\u2718"
 
 static void test_matrix_fill(Matrix *m) {
   for (size_t i = 0; i < m->rows; ++i) {
@@ -44,7 +45,7 @@ static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
   return 1;
 }
 
-void test_matmul_correctness(void) {
+int test_matmul_correctness(void) {
   size_t rows = 10;
   size_t inner = 10;
   size_t cols = 10;
@@ -56,7 +57,7 @@ void test_matmul_correctness(void) {
     fprintf(stderr, "test matrix allocation failed\n");
     matrix_free(&a);
     matrix_free(&b);
-    return;
+    return 0;
   }
 
   test_matrix_fill(&a);
@@ -115,35 +116,42 @@ void test_matmul_correctness(void) {
     matrix_free(&c_par_rows_ijk);
     matrix_free(&c_par_rows_blocked_ikj);
     matrix_free(&c_openmp_ikj);
-    return;
+    return 0;
   }
 
+  int all_passed = 1;
+
   if (!matrix_equal(&c_ref, &c_seq_ikj, 1e-6)) {
-    fprintf(stderr, "ikj result does not match reference\n");
+    fprintf(stderr, "%s%s ikj result does not match reference%s\n", COLOR_RED, CROSS_MARK, COLOR_RESET);
+    all_passed = 0;
   } else {
     printf("%s%s ikj result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_seq_blocked_ikj, 1e-6)) {
-    fprintf(stderr, "blocked result does not match reference\n");
+    fprintf(stderr, "%s%s blocked ikj result does not match reference%s\n", COLOR_RED, CROSS_MARK, COLOR_RESET);
+    all_passed = 0;
   } else {
     printf("%s%s blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_par_rows_ijk, 1e-6)) {
-    fprintf(stderr, "threaded result does not match reference\n");
+    fprintf(stderr, "%s%s threaded result does not match reference%s\n", COLOR_RED, CROSS_MARK, COLOR_RESET);
+    all_passed = 0;
   } else {
     printf("%s%s threaded result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_par_rows_blocked_ikj, 1e-6)) {
-    fprintf(stderr, "threaded blocked result does not match reference\n");
+    fprintf(stderr, "%s%s threaded blocked result does not match reference%s\n", COLOR_RED, CROSS_MARK, COLOR_RESET);
+    all_passed = 0;
   } else {
     printf("%s%s threaded blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_openmp_ikj, 1e-6)) {
-    fprintf(stderr, "OpenMP result does not match reference\n");
+    fprintf(stderr, "%s%s OpenMP result does not match reference%s\n", COLOR_RED, CROSS_MARK, COLOR_RESET);
+    all_passed = 0;
   } else {
     printf("%s%s OpenMP result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
@@ -156,4 +164,6 @@ void test_matmul_correctness(void) {
   matrix_free(&c_par_rows_ijk);
   matrix_free(&c_par_rows_blocked_ikj);
   matrix_free(&c_openmp_ikj);
+
+  return all_passed;
 }
