@@ -9,7 +9,7 @@ int main(void) {
     return 1;
   }
 
-  bench_run_default_suite();
+  bench_run_default_suite("benchmark_results.csv");
 
   return 0;
 }

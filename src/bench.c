@@ -92,8 +92,8 @@ cleanup:
   return result;
 }
 
-static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size,
-                           size_t iterations) {
+static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size, size_t iterations,
+                           FILE *result_file, const char *sweep_name) {
   printf("\n[benchmark]\n");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
          "%zu\n",
@@ -152,34 +152,65 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t thread
     return;
   }
 
-  printf("-----------------------------------------------------\n");
-  printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
-         seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
-         par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
-         seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel), par_rows_blocked_ikj_median,
-         par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
-         openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
-  printf("-----------------------------------------------------\n");
+  // sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
+  if (result_file) {
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median, 1.0);
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
+            seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
+            par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
+            seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel), par_rows_blocked_ikj_median,
+            par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
+    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
+            matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
+            openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
+  } else {
+    printf("-----------------------------------------------------\n");
+    printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median);
+    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
+           seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
+    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
+           par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
+    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
+           seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
+    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel),
+           par_rows_blocked_ikj_median,
+           par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
+    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
+           openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
+    printf("-----------------------------------------------------\n");
+  }
 }
 
-void bench_run_default_suite(void) {
+void bench_run_default_suite(const char *output_csv) {
+  FILE *result_file = fopen(output_csv, "w");
+  if (!result_file) {
+    fprintf(stderr, "failed to open benchmark_results.csv for writing\n");
+    return;
+  }
+  fprintf(result_file, "sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref\n");
+
   // matrix size sweep
-  bench_run_case(128, 128, 128, 1, 128, 100);
-  bench_run_case(256, 256, 256, 1, 256, 100);
-  bench_run_case(512, 512, 512, 1, 512, 100);
+  bench_run_case(128, 128, 128, 1, 128, 100, result_file, "matrix_size");
+  bench_run_case(256, 256, 256, 1, 256, 100, result_file, "matrix_size");
+  bench_run_case(512, 512, 512, 1, 512, 100, result_file, "matrix_size");
 
   // thread count sweep
-  bench_run_case(512, 512, 512, 2, 512, 100);
-  bench_run_case(512, 512, 512, 4, 512, 100);
-  bench_run_case(512, 512, 512, 8, 512, 100);
+  bench_run_case(512, 512, 512, 2, 512, 100, result_file, "thread_count");
+  bench_run_case(512, 512, 512, 4, 512, 100, result_file, "thread_count");
+  bench_run_case(512, 512, 512, 8, 512, 100, result_file, "thread_count");
 
   // block size sweep
-  bench_run_case(512, 512, 512, 1, 32, 100);
-  bench_run_case(512, 512, 512, 1, 64, 100);
-  bench_run_case(512, 512, 512, 1, 128, 100);
+  bench_run_case(512, 512, 512, 1, 32, 100, result_file, "block_size");
+  bench_run_case(512, 512, 512, 1, 64, 100, result_file, "block_size");
+  bench_run_case(512, 512, 512, 1, 128, 100, result_file, "block_size");
+
+  fclose(result_file);
 }

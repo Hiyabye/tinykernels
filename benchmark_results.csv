@@ -1,0 +1,55 @@
+sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
+matrix_size,128,1,128,100,Reference IJK,0.001873,1.000000
+matrix_size,128,1,128,100,Sequential IKJ,0.000280,6.689286
+matrix_size,128,1,128,100,Parallel Rows IJK,0.001575,1.188829
+matrix_size,128,1,128,100,Sequential Blocked IKJ,0.000281,6.665480
+matrix_size,128,1,128,100,Parallel Rows Blocked IKJ,0.000306,6.120915
+matrix_size,128,1,128,100,OpenMP IKJ,0.000282,6.641844
+matrix_size,256,1,256,100,Reference IJK,0.018151,1.000000
+matrix_size,256,1,256,100,Sequential IKJ,0.002526,7.185471
+matrix_size,256,1,256,100,Parallel Rows IJK,0.015168,1.196671
+matrix_size,256,1,256,100,Sequential Blocked IKJ,0.002528,7.179786
+matrix_size,256,1,256,100,Parallel Rows Blocked IKJ,0.002551,7.115053
+matrix_size,256,1,256,100,OpenMP IKJ,0.002530,7.174111
+matrix_size,512,1,512,100,Reference IJK,0.157984,1.000000
+matrix_size,512,1,512,100,Sequential IKJ,0.020263,7.796891
+matrix_size,512,1,512,100,Parallel Rows IJK,0.144943,1.089981
+matrix_size,512,1,512,100,Sequential Blocked IKJ,0.020323,7.773489
+matrix_size,512,1,512,100,Parallel Rows Blocked IKJ,0.020860,7.573743
+matrix_size,512,1,512,100,OpenMP IKJ,0.020386,7.749847
+thread_count,512,2,512,100,Reference IJK,0.157020,1.000000
+thread_count,512,2,512,100,Sequential IKJ,0.020325,7.725627
+thread_count,512,2,512,100,Parallel Rows IJK,0.077073,2.037270
+thread_count,512,2,512,100,Sequential Blocked IKJ,0.020402,7.696468
+thread_count,512,2,512,100,Parallel Rows Blocked IKJ,0.010682,14.698760
+thread_count,512,2,512,100,OpenMP IKJ,0.010409,15.084975
+thread_count,512,4,512,100,Reference IJK,0.157134,1.000000
+thread_count,512,4,512,100,Sequential IKJ,0.020464,7.678394
+thread_count,512,4,512,100,Parallel Rows IJK,0.041638,3.773870
+thread_count,512,4,512,100,Sequential Blocked IKJ,0.020476,7.674269
+thread_count,512,4,512,100,Parallel Rows Blocked IKJ,0.005472,28.718724
+thread_count,512,4,512,100,OpenMP IKJ,0.005332,29.470086
+thread_count,512,8,512,100,Reference IJK,0.158118,1.000000
+thread_count,512,8,512,100,Sequential IKJ,0.020482,7.720064
+thread_count,512,8,512,100,Parallel Rows IJK,0.027507,5.748405
+thread_count,512,8,512,100,Sequential Blocked IKJ,0.020474,7.723081
+thread_count,512,8,512,100,Parallel Rows Blocked IKJ,0.004700,33.645813
+thread_count,512,8,512,100,OpenMP IKJ,0.004671,33.847479
+block_size,512,1,32,100,Reference IJK,0.158139,1.000000
+block_size,512,1,32,100,Sequential IKJ,0.020480,7.721655
+block_size,512,1,32,100,Parallel Rows IJK,0.144710,1.092799
+block_size,512,1,32,100,Sequential Blocked IKJ,0.028480,5.552748
+block_size,512,1,32,100,Parallel Rows Blocked IKJ,0.028326,5.582839
+block_size,512,1,32,100,OpenMP IKJ,0.020486,7.719394
+block_size,512,1,64,100,Reference IJK,0.156796,1.000000
+block_size,512,1,64,100,Sequential IKJ,0.020480,7.656217
+block_size,512,1,64,100,Parallel Rows IJK,0.144698,1.083605
+block_size,512,1,64,100,Sequential Blocked IKJ,0.024869,6.304857
+block_size,512,1,64,100,Parallel Rows Blocked IKJ,0.024871,6.304224
+block_size,512,1,64,100,OpenMP IKJ,0.020488,7.652854
+block_size,512,1,128,100,Reference IJK,0.156786,1.000000
+block_size,512,1,128,100,Sequential IKJ,0.020476,7.657086
+block_size,512,1,128,100,Parallel Rows IJK,0.144721,1.083371
+block_size,512,1,128,100,Sequential Blocked IKJ,0.025126,6.240010
+block_size,512,1,128,100,Parallel Rows Blocked IKJ,0.025143,6.235915
+block_size,512,1,128,100,OpenMP IKJ,0.020471,7.658957
