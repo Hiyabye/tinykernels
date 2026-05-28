@@ -200,19 +200,19 @@ void bench_run_default_suite(const char *output_csv) {
   fprintf(result_file, "sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref\n");
 
   // matrix size sweep
-  bench_run_case(128, 128, 128, 1, 128, 100, result_file, "matrix_size");
-  bench_run_case(256, 256, 256, 1, 256, 100, result_file, "matrix_size");
-  bench_run_case(512, 512, 512, 1, 512, 100, result_file, "matrix_size");
+  bench_run_case(256, 256, 256, 1, 256, 20, result_file, "matrix_size");
+  bench_run_case(512, 512, 512, 1, 512, 20, result_file, "matrix_size");
+  bench_run_case(1024, 1024, 1024, 1, 1024, 20, result_file, "matrix_size");
 
   // thread count sweep
-  bench_run_case(512, 512, 512, 2, 512, 100, result_file, "thread_count");
-  bench_run_case(512, 512, 512, 4, 512, 100, result_file, "thread_count");
-  bench_run_case(512, 512, 512, 8, 512, 100, result_file, "thread_count");
+  bench_run_case(512, 512, 512, 2, 512, 20, result_file, "thread_count");
+  bench_run_case(512, 512, 512, 4, 512, 20, result_file, "thread_count");
+  bench_run_case(512, 512, 512, 8, 512, 20, result_file, "thread_count");
 
   // block size sweep
-  bench_run_case(512, 512, 512, 1, 32, 100, result_file, "block_size");
-  bench_run_case(512, 512, 512, 1, 64, 100, result_file, "block_size");
-  bench_run_case(512, 512, 512, 1, 128, 100, result_file, "block_size");
+  bench_run_case(512, 512, 512, 1, 32, 20, result_file, "block_size");
+  bench_run_case(512, 512, 512, 1, 64, 20, result_file, "block_size");
+  bench_run_case(512, 512, 512, 1, 128, 20, result_file, "block_size");
 
   fclose(result_file);
 }
