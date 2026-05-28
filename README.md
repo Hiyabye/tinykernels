@@ -11,7 +11,7 @@ The goal is not to beat vendor libraries. The goal is to understand how low-leve
 ## Implemented kernels
 
 | Kernel | Description |
-|:---:|:---:|
+|---|---|
 | `MATMUL_REF_IJK` | Reference `i-j-k` implementation |
 | `MATMUL_SEQ_IKJ` | Cache-friendlier sequential `i-k-j` loop order |
 | `MATMUL_SEQ_BLOCKED_IKJ` | Sequential blocked/tiled `i-k-j` implementation |
@@ -25,15 +25,15 @@ The benchmark uses median runtime over repeated runs. The current benchmark suit
 
 ### Matrix size sweep
 
-![Matrix size sweep](assets/matrix_size_sweep.png){: width="50%" height="50%"}
+<img src="assets/matrix_size_sweep.png" width=70% height=70%>
 
 ### Thread count sweep
 
-![Thread count sweep](assets/thread_count_sweep.png){: width="50%" height="50%"}
+<img src="assets/thread_count_sweep.png" width=70% height=70%>
 
 ### Block size sweep
 
-![Block size sweep](assets/block_size_sweep.png){: width="50%" height="50%"}
+<img src="assets/block_size_sweep.png" width=70% height=70%>
 
 ## Observations
 
