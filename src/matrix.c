@@ -17,7 +17,6 @@ Matrix matrix_new(size_t rows, size_t cols) {
   }
 
   size_t len = rows * cols;
-
   if (len > SIZE_MAX / sizeof(mat_elem_t)) {
     fprintf(stderr, "matrix byte size overflow\n");
     return (Matrix){0, 0, NULL};
@@ -28,6 +27,7 @@ Matrix matrix_new(size_t rows, size_t cols) {
     fprintf(stderr, "memory allocation failed\n");
     return (Matrix){0, 0, NULL};
   }
+
   return m;
 }
 
@@ -35,6 +35,7 @@ void matrix_free(Matrix *m) {
   if (!m || !m->data) {
     return;
   }
+
   free(m->data);
   m->data = NULL;
   m->rows = 0;
@@ -45,6 +46,7 @@ void matrix_fill(Matrix *m, mat_elem_t value) {
   if (!m || !m->data) {
     return;
   }
+
   for (size_t i = 0; i < m->rows * m->cols; ++i) {
     m->data[i] = value;
   }
@@ -55,6 +57,7 @@ void matrix_print(const Matrix *m) {
     fprintf(stderr, "invalid matrix\n");
     return;
   }
+
   for (size_t i = 0; i < m->rows; ++i) {
     for (size_t j = 0; j < m->cols; ++j) {
       printf("%f ", m->data[i * m->cols + j]);

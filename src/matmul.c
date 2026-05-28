@@ -50,6 +50,7 @@ static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
       }
     }
   }
+
   return c;
 }
 
@@ -72,6 +73,7 @@ static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
       }
     }
   }
+
   return c;
 }
 
@@ -98,11 +100,9 @@ static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
         size_t i_max = min_size(i0 + block_size, a->rows);
         size_t k_max = min_size(k0 + block_size, a->cols);
         size_t j_max = min_size(j0 + block_size, b->cols);
-
         for (size_t i = i0; i < i_max; ++i) {
           for (size_t k = k0; k < k_max; ++k) {
             mat_elem_t aik = a->data[i * a->cols + k];
-
             for (size_t j = j0; j < j_max; ++j) {
               c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
             }
@@ -111,6 +111,7 @@ static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
       }
     }
   }
+
   return c;
 }
 
@@ -130,6 +131,7 @@ static void *matmul_par_rows_ijk_worker(void *arg) {
       c->data[i * c->cols + j] = sum;
     }
   }
+
   return NULL;
 }
 
@@ -156,7 +158,6 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
 
   pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
   struct ThreadArgs *args = malloc(sizeof(struct ThreadArgs) * num_threads);
-
   if (!threads || !args) {
     fprintf(stderr, "memory allocation failed\n");
     free(threads);
@@ -167,7 +168,6 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
 
   size_t rows_per_thread = a->rows / num_threads;
   size_t remainder = a->rows % num_threads;
-
   size_t current_row = 0;
 
   for (size_t t = 0; t < num_threads; ++t) {
@@ -178,18 +178,15 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
     args[t].c = &c;
     args[t].row_start = current_row;
     args[t].row_end = current_row + rows_for_this_thread;
-
     current_row = args[t].row_end;
 
     int err =
         pthread_create(&threads[t], NULL, matmul_par_rows_ijk_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
-
       for (size_t joined = 0; joined < t; ++joined) {
         pthread_join(threads[joined], NULL);
       }
-
       free(threads);
       free(args);
       matrix_free(&c);
@@ -221,11 +218,9 @@ static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
         size_t i_max = min_size(i0 + block_size, args->row_end);
         size_t k_max = min_size(k0 + block_size, a->cols);
         size_t j_max = min_size(j0 + block_size, b->cols);
-
         for (size_t i = i0; i < i_max; ++i) {
           for (size_t k = k0; k < k_max; ++k) {
             mat_elem_t aik = a->data[i * a->cols + k];
-
             for (size_t j = j0; j < j_max; ++j) {
               c->data[i * c->cols + j] += aik * b->data[k * b->cols + j];
             }
@@ -267,7 +262,6 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
 
   pthread_t *threads = malloc(sizeof(pthread_t) * num_threads);
   struct ThreadArgs *args = malloc(sizeof(struct ThreadArgs) * num_threads);
-
   if (!threads || !args) {
     fprintf(stderr, "memory allocation failed\n");
     free(threads);
@@ -278,7 +272,6 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
 
   size_t rows_per_thread = a->rows / num_threads;
   size_t remainder = a->rows % num_threads;
-
   size_t current_row = 0;
 
   for (size_t t = 0; t < num_threads; ++t) {
@@ -290,18 +283,15 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
     args[t].row_start = current_row;
     args[t].row_end = current_row + rows_for_this_thread;
     args[t].block_size = block_size;
-
     current_row = args[t].row_end;
 
     int err = pthread_create(&threads[t], NULL,
                              matmul_par_rows_blocked_ikj_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
-
       for (size_t joined = 0; joined < t; ++joined) {
         pthread_join(threads[joined], NULL);
       }
-
       free(threads);
       free(args);
       matrix_free(&c);
@@ -339,6 +329,7 @@ static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b) {
       }
     }
   }
+
   return c;
 }
 

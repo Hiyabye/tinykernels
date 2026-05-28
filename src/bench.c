@@ -43,8 +43,9 @@ static double median(double *values, size_t n) {
 
   if (n % 2 == 1) {
     return values[n / 2];
+  } else {
+    return (values[n / 2 - 1] + values[n / 2]) / 2.0;
   }
-  return (values[n / 2 - 1] + values[n / 2]) / 2.0;
 }
 
 static double bench_kernel(size_t rows, size_t inner, size_t cols,
@@ -69,7 +70,6 @@ static double bench_kernel(size_t rows, size_t inner, size_t cols,
   }
 
   double result = -1.0;
-
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
     Matrix c = matmul(&a, &b, cfg);
@@ -83,13 +83,13 @@ static double bench_kernel(size_t rows, size_t inner, size_t cols,
     times[i] = end - start;
     matrix_free(&c);
   }
-
   result = median(times, iterations);
 
 cleanup:
   free(times);
   matrix_free(&a);
   matrix_free(&b);
+
   return result;
 }
 

@@ -30,6 +30,7 @@ int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
       }
     }
   }
+
   return 1;
 }
 
