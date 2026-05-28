@@ -59,75 +59,91 @@ void test_matmul_correctness(void) {
   };
   Matrix c_ref = matmul(&a, &b, cfg_ref);
 
-  MatmulConfig cfg_ikj = {
+  MatmulConfig cfg_seq_ikj = {
       .kernel = MATMUL_SEQ_IKJ,
       .num_threads = 1,
       .block_size = 1,
   };
-  Matrix c_ikj = matmul(&a, &b, cfg_ikj);
+  Matrix c_seq_ikj = matmul(&a, &b, cfg_seq_ikj);
 
-  MatmulConfig cfg_blocked = {
+  MatmulConfig cfg_seq_blocked_ikj = {
       .kernel = MATMUL_SEQ_BLOCKED_IKJ,
       .num_threads = 1,
-      .block_size = 4,
+      .block_size = 16,
   };
-  Matrix c_blocked = matmul(&a, &b, cfg_blocked);
+  Matrix c_seq_blocked_ikj = matmul(&a, &b, cfg_seq_blocked_ikj);
 
-  MatmulConfig cfg_threaded = {
+  MatmulConfig cfg_par_rows_ijk = {
       .kernel = MATMUL_PAR_ROWS_IJK,
       .num_threads = 4,
       .block_size = 1,
   };
-  Matrix c_threaded = matmul(&a, &b, cfg_threaded);
+  Matrix c_par_rows_ijk = matmul(&a, &b, cfg_par_rows_ijk);
 
-  MatmulConfig cfg_threaded_blocked = {
+  MatmulConfig cfg_par_rows_blocked_ikj = {
       .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
       .num_threads = 4,
-      .block_size = 4,
+      .block_size = 16,
   };
-  Matrix c_threaded_blocked = matmul(&a, &b, cfg_threaded_blocked);
+  Matrix c_par_rows_blocked_ikj = matmul(&a, &b, cfg_par_rows_blocked_ikj);
 
-  if (!c_ref.data || !c_ikj.data || !c_blocked.data || !c_threaded.data || !c_threaded_blocked.data) {
+  MatmulConfig cfg_openmp_ikj = {
+      .kernel = MATMUL_OPENMP_IKJ,
+      .num_threads = 4,
+      .block_size = 1,
+  };
+  Matrix c_openmp_ikj = matmul(&a, &b, cfg_openmp_ikj);
+
+  if (!c_ref.data || !c_seq_ikj.data || !c_seq_blocked_ikj.data || !c_par_rows_ijk.data ||
+      !c_par_rows_blocked_ikj.data || !c_openmp_ikj.data) {
     fprintf(stderr, "test matrix multiplication failed\n");
     matrix_free(&a);
     matrix_free(&b);
     matrix_free(&c_ref);
-    matrix_free(&c_ikj);
-    matrix_free(&c_blocked);
-    matrix_free(&c_threaded);
-    matrix_free(&c_threaded_blocked);
+    matrix_free(&c_seq_ikj);
+    matrix_free(&c_seq_blocked_ikj);
+    matrix_free(&c_par_rows_ijk);
+    matrix_free(&c_par_rows_blocked_ikj);
+    matrix_free(&c_openmp_ikj);
     return;
   }
 
-  if (!matrix_equal(&c_ref, &c_ikj, 1e-6)) {
+  if (!matrix_equal(&c_ref, &c_seq_ikj, 1e-6)) {
     fprintf(stderr, "ikj result does not match reference\n");
   } else {
     printf("%s%s ikj result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
-  if (!matrix_equal(&c_ref, &c_blocked, 1e-6)) {
+  if (!matrix_equal(&c_ref, &c_seq_blocked_ikj, 1e-6)) {
     fprintf(stderr, "blocked result does not match reference\n");
   } else {
     printf("%s%s blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
-  if (!matrix_equal(&c_ref, &c_threaded, 1e-6)) {
+  if (!matrix_equal(&c_ref, &c_par_rows_ijk, 1e-6)) {
     fprintf(stderr, "threaded result does not match reference\n");
   } else {
     printf("%s%s threaded result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
-  if (!matrix_equal(&c_ref, &c_threaded_blocked, 1e-6)) {
+  if (!matrix_equal(&c_ref, &c_par_rows_blocked_ikj, 1e-6)) {
     fprintf(stderr, "threaded blocked result does not match reference\n");
   } else {
     printf("%s%s threaded blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
+  if (!matrix_equal(&c_ref, &c_openmp_ikj, 1e-6)) {
+    fprintf(stderr, "OpenMP result does not match reference\n");
+  } else {
+    printf("%s%s OpenMP result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
+  }
+
   matrix_free(&a);
   matrix_free(&b);
   matrix_free(&c_ref);
-  matrix_free(&c_ikj);
-  matrix_free(&c_blocked);
-  matrix_free(&c_threaded);
-  matrix_free(&c_threaded_blocked);
+  matrix_free(&c_seq_ikj);
+  matrix_free(&c_seq_blocked_ikj);
+  matrix_free(&c_par_rows_ijk);
+  matrix_free(&c_par_rows_blocked_ikj);
+  matrix_free(&c_openmp_ikj);
 }
