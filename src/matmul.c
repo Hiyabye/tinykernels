@@ -1,6 +1,7 @@
 #include "matmul.h"
 #include "matrix.h"
 
+#include <omp.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -318,6 +319,29 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
   return c;
 }
 
+static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b) {
+  if (!matmul_validate_inputs(a, b)) {
+    return (Matrix){0, 0, NULL};
+  }
+
+  Matrix c = matrix_new(a->rows, b->cols);
+  if (!c.data) {
+    fprintf(stderr, "failed to initialize result matrix\n");
+    return (Matrix){0, 0, NULL};
+  }
+
+#pragma omp parallel for
+  for (size_t i = 0; i < a->rows; ++i) {
+    for (size_t k = 0; k < a->cols; ++k) {
+      mat_elem_t aik = a->data[i * a->cols + k];
+      for (size_t j = 0; j < b->cols; ++j) {
+        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+      }
+    }
+  }
+  return c;
+}
+
 Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
   switch (cfg.kernel) {
   case MATMUL_REF_IJK:
@@ -330,6 +354,8 @@ Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
     return matmul_par_rows_ijk(a, b, cfg.num_threads);
   case MATMUL_PAR_ROWS_BLOCKED_IKJ:
     return matmul_par_rows_blocked_ikj(a, b, cfg.num_threads, cfg.block_size);
+  case MATMUL_OPENMP_IKJ:
+    return matmul_openmp_ikj(a, b);
   default:
     return (Matrix){0, 0, NULL};
   }
@@ -347,6 +373,8 @@ const char *matmul_kernel_name(MatmulKernel kernel) {
     return "Parallel Rows IJK";
   case MATMUL_PAR_ROWS_BLOCKED_IKJ:
     return "Parallel Rows Blocked IKJ";
+  case MATMUL_OPENMP_IKJ:
+    return "OpenMP IKJ";
   default:
     return "Unknown";
   }
