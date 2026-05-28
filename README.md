@@ -45,8 +45,13 @@ The benchmark uses median runtime over repeated runs. The current benchmark suit
 ## Build & run
 
 ```bash
-make
 make run
+```
+
+On macOS with Homebrew LLVM:
+
+```bash
+make run LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6
 ```
 
 ## Debug build
@@ -64,16 +69,16 @@ make run
 
 ## Plot benchmark graphs
 
-Save benchmark results as CSV using this schema:
-
-```text
-sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
-```
-
-Then run:
+`make run` writes `benchmark_results.csv`. Regenerate graphs with:
 
 ```bash
 python3 scripts/plot_benchmarks.py benchmark_results.csv assets
+```
+
+Expected CSV schema:
+
+```text
+sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
 ```
 
 ## Roadmap
