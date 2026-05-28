@@ -19,21 +19,36 @@ The goal is not to beat vendor libraries. The goal is to understand how low-leve
 | `MATMUL_PAR_ROWS_BLOCKED_IKJ` | pthread row-partitioned blocked `i-k-j` implementation |
 | `MATMUL_OPENMP_IKJ` | OpenMP parallel `i-k-j` implementation |
 
+## API shape
+
+`matmul()` is the convenience API. It allocates and returns a new output matrix.
+
+```c
+Matrix c = matmul(&a, &b, cfg);
+```
+
+`matmul_into()` writes into a caller-provided output matrix. This is better for benchmarking because the output allocation can be separated from the compute loop.
+
+```c
+Matrix c = matrix_new(a.rows, b.cols);
+matmul_into(&a, &b, &c, cfg);
+```
+
 ## Benchmark results
 
 The benchmark uses median runtime over repeated runs. The current benchmark suite checks matrix-size scaling, thread-count scaling, and block-size sensitivity.
 
 ### Matrix size sweep
 
-<img src="assets/matrix_size_sweep.png" width=70% height=70%>
+<img src="assets/matrix_size_sweep.png" width="70%">
 
 ### Thread count sweep
 
-<img src="assets/thread_count_sweep.png" width=70% height=70%>
+<img src="assets/thread_count_sweep.png" width="70%">
 
 ### Block size sweep
 
-<img src="assets/block_size_sweep.png" width=70% height=70%>
+<img src="assets/block_size_sweep.png" width="70%">
 
 ## Observations
 
@@ -83,8 +98,8 @@ sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
 
 ## Roadmap
 
-- Add `matmul_into()` to separate output allocation from compute timing
-- Add CSV benchmark export
+- Add a fair pthread `i-k-j` row-parallel kernel for comparison with OpenMP IKJ
+- Add quick/full benchmark targets
 - Add profiling notes using `perf`, Instruments, or similar tools
 - Explore SIMD/vectorization
 - Port core abstractions to C++

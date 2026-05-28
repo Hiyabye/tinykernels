@@ -68,23 +68,25 @@ static double bench_kernel(size_t rows, size_t inner, size_t cols, MatmulConfig 
     return -1.0;
   }
 
+  Matrix c = matrix_new(rows, cols);
+  if (!c.data) {
+    goto cleanup;
+  }
+
   double result = -1.0;
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
-    Matrix c = matmul(&a, &b, cfg);
+    int ok = matmul_into(&a, &b, &c, cfg);
     double end = now_seconds();
-
-    if (!c.data) {
-      matrix_free(&c);
+    if (!ok) {
       goto cleanup;
     }
-
     times[i] = end - start;
-    matrix_free(&c);
   }
   result = median(times, iterations);
 
 cleanup:
+  matrix_free(&c);
   free(times);
   matrix_free(&a);
   matrix_free(&b);
