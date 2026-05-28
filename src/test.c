@@ -87,8 +87,7 @@ void test_matmul_correctness(void) {
   };
   Matrix c_threaded_blocked = matmul(&a, &b, cfg_threaded_blocked);
 
-  if (!c_ref.data || !c_ikj.data || !c_blocked.data || !c_threaded.data ||
-      !c_threaded_blocked.data) {
+  if (!c_ref.data || !c_ikj.data || !c_blocked.data || !c_threaded.data || !c_threaded_blocked.data) {
     fprintf(stderr, "test matrix multiplication failed\n");
     matrix_free(&a);
     matrix_free(&b);
@@ -103,29 +102,25 @@ void test_matmul_correctness(void) {
   if (!matrix_equal(&c_ref, &c_ikj, 1e-6)) {
     fprintf(stderr, "ikj result does not match reference\n");
   } else {
-    printf("%s%s ikj result matches reference%s\n", COLOR_GREEN, CHECK_MARK,
-           COLOR_RESET);
+    printf("%s%s ikj result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_blocked, 1e-6)) {
     fprintf(stderr, "blocked result does not match reference\n");
   } else {
-    printf("%s%s blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK,
-           COLOR_RESET);
+    printf("%s%s blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_threaded, 1e-6)) {
     fprintf(stderr, "threaded result does not match reference\n");
   } else {
-    printf("%s%s threaded result matches reference%s\n", COLOR_GREEN,
-           CHECK_MARK, COLOR_RESET);
+    printf("%s%s threaded result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   if (!matrix_equal(&c_ref, &c_threaded_blocked, 1e-6)) {
     fprintf(stderr, "threaded blocked result does not match reference\n");
   } else {
-    printf("%s%s threaded blocked result matches reference%s\n", COLOR_GREEN,
-           CHECK_MARK, COLOR_RESET);
+    printf("%s%s threaded blocked result matches reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
   matrix_free(&a);

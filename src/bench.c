@@ -48,8 +48,7 @@ static double median(double *values, size_t n) {
   }
 }
 
-static double bench_kernel(size_t rows, size_t inner, size_t cols,
-                           MatmulConfig cfg, size_t iterations) {
+static double bench_kernel(size_t rows, size_t inner, size_t cols, MatmulConfig cfg, size_t iterations) {
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
 
@@ -93,8 +92,7 @@ cleanup:
   return result;
 }
 
-static void bench_run_case(size_t rows, size_t inner, size_t cols,
-                           size_t threads, size_t block_size,
+static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size,
                            size_t iterations) {
   printf("\n[benchmark]\n");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
@@ -111,78 +109,60 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols,
       .num_threads = 1,
       .block_size = 1,
   };
-  double ref_ijk_median =
-      bench_kernel(rows, inner, cols, ref_ijk_cfg, iterations);
+  double ref_ijk_median = bench_kernel(rows, inner, cols, ref_ijk_cfg, iterations);
 
   MatmulConfig seq_ikj_cfg = {
       .kernel = MATMUL_PAR_ROWS_IJK,
       .num_threads = threads,
       .block_size = 1,
   };
-  double seq_ikj_median =
-      bench_kernel(rows, inner, cols, seq_ikj_cfg, iterations);
+  double seq_ikj_median = bench_kernel(rows, inner, cols, seq_ikj_cfg, iterations);
 
   MatmulConfig seq_blocked_ikj_cfg = {
       .kernel = MATMUL_SEQ_IKJ,
       .num_threads = 1,
       .block_size = 1,
   };
-  double seq_blocked_ikj_median =
-      bench_kernel(rows, inner, cols, seq_blocked_ikj_cfg, iterations);
+  double seq_blocked_ikj_median = bench_kernel(rows, inner, cols, seq_blocked_ikj_cfg, iterations);
 
   MatmulConfig par_rows_ijk_cfg = {
       .kernel = MATMUL_SEQ_BLOCKED_IKJ,
       .num_threads = 1,
       .block_size = block_size,
   };
-  double par_rows_ijk_median =
-      bench_kernel(rows, inner, cols, par_rows_ijk_cfg, iterations);
+  double par_rows_ijk_median = bench_kernel(rows, inner, cols, par_rows_ijk_cfg, iterations);
 
   MatmulConfig par_rows_blocked_ikj_cfg = {
       .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
       .num_threads = threads,
       .block_size = block_size,
   };
-  double par_rows_blocked_ikj_median =
-      bench_kernel(rows, inner, cols, par_rows_blocked_ikj_cfg, iterations);
+  double par_rows_blocked_ikj_median = bench_kernel(rows, inner, cols, par_rows_blocked_ikj_cfg, iterations);
 
   MatmulConfig openmp_ikj_cfg = {
       .kernel = MATMUL_OPENMP_IKJ,
       .num_threads = threads,
       .block_size = block_size,
   };
-  double openmp_ikj_median =
-      bench_kernel(rows, inner, cols, openmp_ikj_cfg, iterations);
+  double openmp_ikj_median = bench_kernel(rows, inner, cols, openmp_ikj_cfg, iterations);
 
-  if (ref_ijk_median < 0.0 || seq_ikj_median < 0.0 ||
-      seq_blocked_ikj_median < 0.0 || par_rows_ijk_median < 0.0 ||
+  if (ref_ijk_median < 0.0 || seq_ikj_median < 0.0 || seq_blocked_ikj_median < 0.0 || par_rows_ijk_median < 0.0 ||
       par_rows_blocked_ikj_median < 0.0 || openmp_ikj_median < 0.0) {
     fprintf(stderr, "benchmark failed\n");
     return;
   }
 
   printf("-----------------------------------------------------\n");
-  printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel),
-         ref_ijk_median);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel),
-         seq_ikj_median,
+  printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median);
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
          seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n",
-         matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
-         par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median
-                                   : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n",
-         matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
-         seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median
-                                      : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n",
-         matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel),
-         par_rows_blocked_ikj_median,
-         par_rows_blocked_ikj_median > 0.0
-             ? ref_ijk_median / par_rows_blocked_ikj_median
-             : 0.0);
-  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(openmp_ikj_cfg.kernel),
-         openmp_ikj_median,
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
+         par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
+         seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel), par_rows_blocked_ikj_median,
+         par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
+  printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
          openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
   printf("-----------------------------------------------------\n");
 }

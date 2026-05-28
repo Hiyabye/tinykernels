@@ -79,8 +79,7 @@ static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
   return c;
 }
 
-static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
-                                     size_t block_size) {
+static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b, size_t block_size) {
   if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
@@ -140,8 +139,7 @@ static void *matmul_par_rows_ijk_worker(void *arg) {
   return NULL;
 }
 
-static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
-                                  size_t num_threads) {
+static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b, size_t num_threads) {
   if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
@@ -185,8 +183,7 @@ static Matrix matmul_par_rows_ijk(const Matrix *a, const Matrix *b,
     args[t].row_end = current_row + rows_for_this_thread;
     current_row = args[t].row_end;
 
-    int err =
-        pthread_create(&threads[t], NULL, matmul_par_rows_ijk_worker, &args[t]);
+    int err = pthread_create(&threads[t], NULL, matmul_par_rows_ijk_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
       for (size_t joined = 0; joined < t; ++joined) {
@@ -239,9 +236,7 @@ static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
   return NULL;
 }
 
-static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
-                                          size_t num_threads,
-                                          size_t block_size) {
+static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b, size_t num_threads, size_t block_size) {
   if (!matmul_validate_inputs(a, b)) {
     return (Matrix){0, 0, NULL};
   }
@@ -291,8 +286,7 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b,
     args[t].block_size = block_size;
     current_row = args[t].row_end;
 
-    int err = pthread_create(&threads[t], NULL,
-                             matmul_par_rows_blocked_ikj_worker, &args[t]);
+    int err = pthread_create(&threads[t], NULL, matmul_par_rows_blocked_ikj_worker, &args[t]);
     if (err != 0) {
       fprintf(stderr, "pthread_create failed\n");
       for (size_t joined = 0; joined < t; ++joined) {
