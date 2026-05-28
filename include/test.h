@@ -1,7 +1,6 @@
 #ifndef TEST_H
 #define TEST_H
 
-#include "matmul.h"
 #include "matrix.h"
 
 #include <stddef.h>
