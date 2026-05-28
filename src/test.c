@@ -45,10 +45,9 @@ static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
   return 1;
 }
 
-int test_matmul_correctness(void) {
-  size_t rows = 10;
-  size_t inner = 10;
-  size_t cols = 10;
+static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size) {
+  printf("\n[test] A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu\n", rows, inner, inner, cols, threads,
+         block_size);
 
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
@@ -80,27 +79,27 @@ int test_matmul_correctness(void) {
   MatmulConfig cfg_seq_blocked_ikj = {
       .kernel = MATMUL_SEQ_BLOCKED_IKJ,
       .num_threads = 1,
-      .block_size = 16,
+      .block_size = block_size,
   };
   Matrix c_seq_blocked_ikj = matmul(&a, &b, cfg_seq_blocked_ikj);
 
   MatmulConfig cfg_par_rows_ijk = {
       .kernel = MATMUL_PAR_ROWS_IJK,
-      .num_threads = 4,
+      .num_threads = threads,
       .block_size = 1,
   };
   Matrix c_par_rows_ijk = matmul(&a, &b, cfg_par_rows_ijk);
 
   MatmulConfig cfg_par_rows_blocked_ikj = {
       .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
-      .num_threads = 4,
-      .block_size = 16,
+      .num_threads = threads,
+      .block_size = block_size,
   };
   Matrix c_par_rows_blocked_ikj = matmul(&a, &b, cfg_par_rows_blocked_ikj);
 
   MatmulConfig cfg_openmp_ikj = {
       .kernel = MATMUL_OPENMP_IKJ,
-      .num_threads = 4,
+      .num_threads = threads,
       .block_size = 1,
   };
   Matrix c_openmp_ikj = matmul(&a, &b, cfg_openmp_ikj);
@@ -164,6 +163,54 @@ int test_matmul_correctness(void) {
   matrix_free(&c_par_rows_ijk);
   matrix_free(&c_par_rows_blocked_ikj);
   matrix_free(&c_openmp_ikj);
+
+  return all_passed;
+}
+
+int test_matmul_correctness(void) {
+  int all_passed = 1;
+
+  // matrix size sweep
+  all_passed &= test_matmul_case(1, 1, 1, 4, 8);
+  all_passed &= test_matmul_case(2, 3, 4, 4, 8);
+  all_passed &= test_matmul_case(7, 11, 5, 4, 8);
+  all_passed &= test_matmul_case(10, 10, 10, 4, 8);
+  all_passed &= test_matmul_case(16, 16, 16, 4, 8);
+  all_passed &= test_matmul_case(17, 17, 17, 4, 8);
+  all_passed &= test_matmul_case(31, 29, 13, 4, 8);
+
+  // thread count sweep
+  all_passed &= test_matmul_case(64, 64, 64, 1, 8);
+  all_passed &= test_matmul_case(64, 64, 64, 2, 8);
+  all_passed &= test_matmul_case(64, 64, 64, 4, 8);
+  all_passed &= test_matmul_case(64, 64, 64, 8, 8);
+
+  // block size sweep
+  all_passed &= test_matmul_case(64, 64, 64, 4, 1);
+  all_passed &= test_matmul_case(64, 64, 64, 4, 4);
+  all_passed &= test_matmul_case(64, 64, 64, 4, 8);
+  all_passed &= test_matmul_case(64, 64, 64, 4, 16);
+  all_passed &= test_matmul_case(64, 64, 64, 4, 32);
+
+  // block_size is not a divisor of rows/cols
+  all_passed &= test_matmul_case(70, 70, 70, 4, 8);
+  all_passed &= test_matmul_case(70, 70, 70, 4, 16);
+  all_passed &= test_matmul_case(70, 70, 70, 4, 32);
+
+  // thread count is not a divisor of rows
+  all_passed &= test_matmul_case(70, 70, 70, 3, 8);
+  all_passed &= test_matmul_case(70, 70, 70, 5, 8);
+  all_passed &= test_matmul_case(70, 70, 70, 6, 8);
+
+  // block_size > rows
+  all_passed &= test_matmul_case(16, 16, 16, 4, 32);
+  all_passed &= test_matmul_case(16, 16, 16, 4, 64);
+  all_passed &= test_matmul_case(16, 16, 16, 4, 128);
+
+  // non-square matrix
+  all_passed &= test_matmul_case(16, 32, 64, 4, 8);
+  all_passed &= test_matmul_case(32, 16, 64, 4, 8);
+  all_passed &= test_matmul_case(64, 16, 32, 4, 8);
 
   return all_passed;
 }
