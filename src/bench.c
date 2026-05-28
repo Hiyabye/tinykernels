@@ -112,23 +112,23 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t thread
   double ref_ijk_median = bench_kernel(rows, inner, cols, ref_ijk_cfg, iterations);
 
   MatmulConfig seq_ikj_cfg = {
-      .kernel = MATMUL_PAR_ROWS_IJK,
-      .num_threads = threads,
+      .kernel = MATMUL_SEQ_IKJ,
+      .num_threads = 1,
       .block_size = 1,
   };
   double seq_ikj_median = bench_kernel(rows, inner, cols, seq_ikj_cfg, iterations);
 
   MatmulConfig seq_blocked_ikj_cfg = {
-      .kernel = MATMUL_SEQ_IKJ,
+      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
       .num_threads = 1,
-      .block_size = 1,
+      .block_size = block_size,
   };
   double seq_blocked_ikj_median = bench_kernel(rows, inner, cols, seq_blocked_ikj_cfg, iterations);
 
   MatmulConfig par_rows_ijk_cfg = {
-      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
-      .num_threads = 1,
-      .block_size = block_size,
+      .kernel = MATMUL_PAR_ROWS_IJK,
+      .num_threads = threads,
+      .block_size = 1,
   };
   double par_rows_ijk_median = bench_kernel(rows, inner, cols, par_rows_ijk_cfg, iterations);
 
@@ -141,8 +141,8 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t thread
 
   MatmulConfig openmp_ikj_cfg = {
       .kernel = MATMUL_OPENMP_IKJ,
-      .num_threads = threads,
-      .block_size = block_size,
+      .num_threads = 1,
+      .block_size = 1,
   };
   double openmp_ikj_median = bench_kernel(rows, inner, cols, openmp_ikj_cfg, iterations);
 
