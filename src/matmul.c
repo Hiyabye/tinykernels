@@ -45,8 +45,9 @@ static Matrix matmul_ref_ijk(const Matrix *a, const Matrix *b) {
   for (size_t i = 0; i < a->rows; ++i) {
     for (size_t j = 0; j < b->cols; ++j) {
       for (size_t k = 0; k < a->cols; ++k) {
-        c.data[i * c.cols + j] +=
-            a->data[i * a->cols + k] * b->data[k * b->cols + j];
+        mat_elem_t aik = a->data[i * a->cols + k];
+        mat_elem_t bkj = b->data[k * b->cols + j];
+        c.data[i * c.cols + j] += aik * bkj;
       }
     }
   }
@@ -69,7 +70,8 @@ static Matrix matmul_seq_ikj(const Matrix *a, const Matrix *b) {
     for (size_t k = 0; k < a->cols; ++k) {
       mat_elem_t aik = a->data[i * a->cols + k];
       for (size_t j = 0; j < b->cols; ++j) {
-        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+        mat_elem_t bkj = b->data[k * b->cols + j];
+        c.data[i * c.cols + j] += aik * bkj;
       }
     }
   }
@@ -104,7 +106,8 @@ static Matrix matmul_seq_blocked_ikj(const Matrix *a, const Matrix *b,
           for (size_t k = k0; k < k_max; ++k) {
             mat_elem_t aik = a->data[i * a->cols + k];
             for (size_t j = j0; j < j_max; ++j) {
-              c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+              mat_elem_t bkj = b->data[k * b->cols + j];
+              c.data[i * c.cols + j] += aik * bkj;
             }
           }
         }
@@ -126,7 +129,9 @@ static void *matmul_par_rows_ijk_worker(void *arg) {
     for (size_t j = 0; j < b->cols; ++j) {
       mat_elem_t sum = 0;
       for (size_t k = 0; k < a->cols; ++k) {
-        sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
+        mat_elem_t aik = a->data[i * a->cols + k];
+        mat_elem_t bkj = b->data[k * b->cols + j];
+        sum += aik * bkj;
       }
       c->data[i * c->cols + j] = sum;
     }
@@ -222,7 +227,8 @@ static void *matmul_par_rows_blocked_ikj_worker(void *arg) {
           for (size_t k = k0; k < k_max; ++k) {
             mat_elem_t aik = a->data[i * a->cols + k];
             for (size_t j = j0; j < j_max; ++j) {
-              c->data[i * c->cols + j] += aik * b->data[k * b->cols + j];
+              mat_elem_t bkj = b->data[k * b->cols + j];
+              c->data[i * c->cols + j] += aik * bkj;
             }
           }
         }
@@ -325,7 +331,8 @@ static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b) {
     for (size_t k = 0; k < a->cols; ++k) {
       mat_elem_t aik = a->data[i * a->cols + k];
       for (size_t j = 0; j < b->cols; ++j) {
-        c.data[i * c.cols + j] += aik * b->data[k * b->cols + j];
+        mat_elem_t bkj = b->data[k * b->cols + j];
+        c.data[i * c.cols + j] += aik * bkj;
       }
     }
   }
