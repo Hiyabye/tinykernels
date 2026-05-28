@@ -141,7 +141,7 @@ static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t thread
 
   MatmulConfig openmp_ikj_cfg = {
       .kernel = MATMUL_OPENMP_IKJ,
-      .num_threads = 1,
+      .num_threads = threads,
       .block_size = 1,
   };
   double openmp_ikj_median = bench_kernel(rows, inner, cols, openmp_ikj_cfg, iterations);

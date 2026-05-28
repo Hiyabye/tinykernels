@@ -309,8 +309,13 @@ static Matrix matmul_par_rows_blocked_ikj(const Matrix *a, const Matrix *b, size
   return c;
 }
 
-static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b) {
+static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b, size_t num_threads) {
   if (!matmul_validate_inputs(a, b)) {
+    return (Matrix){0, 0, NULL};
+  }
+
+  if (num_threads == 0) {
+    fprintf(stderr, "num_threads must be greater than zero\n");
     return (Matrix){0, 0, NULL};
   }
 
@@ -320,7 +325,7 @@ static Matrix matmul_openmp_ikj(const Matrix *a, const Matrix *b) {
     return (Matrix){0, 0, NULL};
   }
 
-#pragma omp parallel for
+#pragma omp parallel for num_threads(num_threads) schedule(static)
   for (size_t i = 0; i < a->rows; ++i) {
     for (size_t k = 0; k < a->cols; ++k) {
       mat_elem_t aik = a->data[i * a->cols + k];
@@ -347,7 +352,7 @@ Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
   case MATMUL_PAR_ROWS_BLOCKED_IKJ:
     return matmul_par_rows_blocked_ikj(a, b, cfg.num_threads, cfg.block_size);
   case MATMUL_OPENMP_IKJ:
-    return matmul_openmp_ikj(a, b);
+    return matmul_openmp_ikj(a, b, cfg.num_threads);
   default:
     return (Matrix){0, 0, NULL};
   }
