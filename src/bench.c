@@ -96,7 +96,7 @@ cleanup:
 
 static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size, size_t iterations,
                            FILE *result_file, const char *sweep_name) {
-  printf("\n[benchmark]\n");
+  printf("\n[benchmark] ");
   printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
          "%zu\n",
          rows, inner, inner, cols, threads, block_size, iterations);
