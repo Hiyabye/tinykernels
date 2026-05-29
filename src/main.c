@@ -10,6 +10,5 @@ int main(void) {
   }
 
   bench_run_default_suite("benchmark_results.csv");
-
   return 0;
 }

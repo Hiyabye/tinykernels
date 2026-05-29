@@ -1,42 +1,86 @@
 # tinykernels
 
-A learning-oriented CPU kernel project for implementing and benchmarking matrix multiplication optimizations from scratch.
+`tinykernels` is a learning-oriented CPU kernel project for implementing and benchmarking matrix multiplication optimizations from scratch.
 
-## Overview
+The project starts from a naive matrix multiplication implementation and progressively adds loop-order optimization, blocking, pthread parallelism, and OpenMP parallelism. The goal is not to beat vendor libraries; the goal is to understand how low-level implementation choices affect performance.
 
-`tinykernels` starts from a simple reference matrix multiplication kernel and incrementally applies CPU-side optimization techniques such as cache-friendly loop ordering, blocking, pthread-based row partitioning, and OpenMP parallelism.
+## Current scope
 
-The goal is not to beat vendor libraries. The goal is to understand how low-level implementation choices affect performance.
+- Dense row-major matrix allocation
+- Config-driven matrix multiplication API
+- Output-buffer API via `matmul_into()`
+- Single-threaded kernels
+- pthread row-partitioned kernels
+- OpenMP row-parallel kernels
+- IJK and IKJ loop orders
+- Optional blocking/tiling
+- Correctness tests across matrix shapes, thread counts, and block sizes
+- Median-based benchmark CSV export
+- Matplotlib benchmark plotting script
 
-## Implemented kernels
+## Project layout
 
-| Kernel | Description |
-|---|---|
-| `MATMUL_REF_IJK` | Reference `i-j-k` implementation |
-| `MATMUL_SEQ_IKJ` | Cache-friendlier sequential `i-k-j` loop order |
-| `MATMUL_SEQ_BLOCKED_IKJ` | Sequential blocked/tiled `i-k-j` implementation |
-| `MATMUL_PAR_ROWS_IJK` | pthread row-partitioned `i-j-k` implementation |
-| `MATMUL_PAR_ROWS_BLOCKED_IKJ` | pthread row-partitioned blocked `i-k-j` implementation |
-| `MATMUL_OPENMP_IKJ` | OpenMP parallel `i-k-j` implementation |
-
-## API shape
-
-`matmul()` is the convenience API. It allocates and returns a new output matrix.
-
-```c
-Matrix c = matmul(&a, &b, cfg);
+```text
+include/
+  bench.h
+  matmul.h
+  matrix.h
+  test.h
+src/
+  main.c
+  matrix.c
+  bench.c
+  test.c
+  matmul/
+    matmul.c        # public dispatch and validation
+    kernels.h       # shared internal kernel helpers
+    single.c        # single-thread backend
+    pthread.c       # pthread backend
+    openmp.c        # OpenMP backend
+scripts/
+  plot_benchmarks.py
+assets/
+  matrix_size_sweep.png
+  thread_count_sweep.png
+  block_size_sweep.png
 ```
 
-`matmul_into()` writes into a caller-provided output matrix. This is better for benchmarking because the output allocation can be separated from the compute loop.
+## Matmul configuration
+
+Instead of one enum per kernel, `tinykernels` uses composable configuration flags:
 
 ```c
-Matrix c = matrix_new(a.rows, b.cols);
-matmul_into(&a, &b, &c, cfg);
+typedef struct {
+  MatmulBackend backend;      // single, pthread, openmp
+  MatmulLoopOrder loop_order; // ijk, ikj
+  int use_blocking;           // 0 or 1
+  size_t num_threads;
+  size_t block_size;
+} MatmulConfig;
 ```
+
+This makes combinations explicit. For example:
+
+| Backend | Loop order | Blocking | Label |
+|---|---|---:|---|
+| single | IJK | off | `single_plain_ijk` |
+| single | IKJ | on | `single_blocked_ikj` |
+| pthread | IKJ | off | `pthread_plain_ikj` |
+| pthread | IKJ | on | `pthread_blocked_ikj` |
+| openmp | IKJ | on | `openmp_blocked_ikj` |
+
+## API
+
+```c
+Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg);
+int matmul_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
+```
+
+`matmul()` is a convenience wrapper that allocates the output matrix. `matmul_into()` writes into an existing output matrix and is better suited for benchmarking and future CUDA-style APIs.
 
 ## Benchmark results
 
-The benchmark uses median runtime over repeated runs. The current benchmark suite checks matrix-size scaling, thread-count scaling, and block-size sensitivity.
+The default benchmark suite writes `benchmark_results.csv` and uses median runtime over repeated runs.
 
 ### Matrix size sweep
 
@@ -50,44 +94,43 @@ The benchmark uses median runtime over repeated runs. The current benchmark suit
 
 <img src="assets/block_size_sweep.png" width="70%">
 
-## Observations
-
-- `Sequential IKJ` is much faster than the reference `IJK` implementation because it improves row-major memory locality.
-- pthread row partitioning avoids write races by assigning disjoint row ranges of `C` to each worker.
-- `Parallel Rows Blocked IKJ` and `OpenMP IKJ` show strong speedups on the 512×512 benchmark.
-- Block size matters: smaller blocks are not automatically faster, and the best value depends on the machine and cache behavior.
-
-## Build & run
+## Build and run
 
 ```bash
 make run
 ```
 
-On macOS with Homebrew LLVM:
+To regenerate plots after benchmarking:
 
 ```bash
-make run LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6
-```
-
-## Debug build
-
-```bash
-make debug
+make plots
 ```
 
 ## Sanitizer build
 
 ```bash
 make sanitize
-make run
+./tinykernels
 ```
 
-## Plot benchmark graphs
+## OpenMP notes
 
-`make run` writes `benchmark_results.csv`. Regenerate graphs with:
+OpenMP is enabled by default:
 
 ```bash
-python3 scripts/plot_benchmarks.py benchmark_results.csv assets
+make
+```
+
+To build without OpenMP:
+
+```bash
+make OPENMP=0
+```
+
+On macOS with Homebrew LLVM, you can pass an LLVM prefix:
+
+```bash
+make LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6
 ```
 
 Expected CSV schema:
@@ -98,10 +141,11 @@ sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
 
 ## Roadmap
 
-- Add a fair pthread `i-k-j` row-parallel kernel for comparison with OpenMP IKJ
-- Add quick/full benchmark targets
+- Add quick/full benchmark modes via CLI arguments
+- Add benchmark environment metadata to README
 - Add profiling notes using `perf`, Instruments, or similar tools
+- Explore `float` vs `double`
 - Explore SIMD/vectorization
-- Port core abstractions to C++
+- Port core abstractions to C++ with RAII
 - Add CUDA kernels
 - Extend toward small ML primitives such as linear layers, activation kernels, and normalization kernels

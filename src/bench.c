@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define LABEL_SIZE 64
+
 static double now_seconds(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -27,11 +29,11 @@ static int compare_double(const void *a, const void *b) {
 
   if (x < y) {
     return -1;
-  } else if (x > y) {
-    return 1;
-  } else {
-    return 0;
   }
+  if (x > y) {
+    return 1;
+  }
+  return 0;
 }
 
 static double median(double *values, size_t n) {
@@ -43,176 +45,200 @@ static double median(double *values, size_t n) {
 
   if (n % 2 == 1) {
     return values[n / 2];
-  } else {
-    return (values[n / 2 - 1] + values[n / 2]) / 2.0;
   }
+  return (values[n / 2 - 1] + values[n / 2]) / 2.0;
 }
 
-static double bench_kernel(size_t rows, size_t inner, size_t cols, MatmulConfig cfg, size_t iterations) {
+static MatmulConfig config_make(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, size_t num_threads,
+                                size_t block_size) {
+  MatmulConfig cfg = {
+      .backend = backend,
+      .loop_order = loop_order,
+      .use_blocking = use_blocking,
+      .num_threads = num_threads,
+      .block_size = block_size,
+  };
+  return cfg;
+}
+
+static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig cfg, size_t iterations) {
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
+  Matrix c = matrix_new(rows, cols);
 
-  if (!a.data || !b.data) {
+  if (!a.data || !b.data || !c.data) {
     matrix_free(&a);
     matrix_free(&b);
+    matrix_free(&c);
     return -1.0;
   }
 
   bench_matrix_fill(&a);
   bench_matrix_fill(&b);
 
-  double *times = malloc(sizeof(double) * iterations);
+  double *times = malloc(sizeof(*times) * iterations);
   if (!times) {
     matrix_free(&a);
     matrix_free(&b);
+    matrix_free(&c);
     return -1.0;
   }
 
   double result = -1.0;
-  Matrix c = matrix_new(rows, cols);
-  if (!c.data) {
-    goto cleanup;
-  }
-
   for (size_t i = 0; i < iterations; ++i) {
     double start = now_seconds();
     int ok = matmul_into(&a, &b, &c, cfg);
     double end = now_seconds();
+
     if (!ok) {
       goto cleanup;
     }
+
     times[i] = end - start;
   }
+
   result = median(times, iterations);
 
 cleanup:
-  matrix_free(&c);
   free(times);
   matrix_free(&a);
   matrix_free(&b);
-
+  matrix_free(&c);
   return result;
 }
 
-static void bench_run_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size, size_t iterations,
-                           FILE *result_file, const char *sweep_name) {
-  printf("\n[benchmark] ");
-  printf("A: %zux%zu, B: %zux%zu, threads: %zu, block size: %zu, iterations: "
-         "%zu\n",
-         rows, inner, inner, cols, threads, block_size, iterations);
+static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig cfg,
+                         size_t iterations, double time_sec, double baseline_sec) {
+  char label[LABEL_SIZE];
+  if (!matmul_config_label(cfg, label, sizeof(label))) {
+    snprintf(label, sizeof(label), "unknown");
+  }
 
-  if (iterations == 0) {
-    fprintf(stderr, "iterations must be greater than zero\n");
+  double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
+
+  fprintf(output, "%s,%zu,%zu,%zu,%s,%s,%d,%zu,%zu,%zu,%f,%f,%s\n", sweep, rows, inner, cols,
+          matmul_backend_name(cfg.backend), matmul_loop_order_name(cfg.loop_order), cfg.use_blocking, cfg.num_threads,
+          cfg.block_size, iterations, time_sec, speedup, label);
+}
+
+static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t cols, size_t iterations,
+                           const MatmulConfig *configs, size_t config_count, FILE *output) {
+  if (iterations == 0 || !configs || config_count == 0 || !output) {
+    fprintf(stderr, "invalid benchmark case\n");
     return;
   }
 
-  MatmulConfig ref_ijk_cfg = {
-      .kernel = MATMUL_REF_IJK,
-      .num_threads = 1,
-      .block_size = 1,
-  };
-  double ref_ijk_median = bench_kernel(rows, inner, cols, ref_ijk_cfg, iterations);
+  printf("\n[benchmark] %s: A=%zux%zu, B=%zux%zu, iterations=%zu\n", sweep, rows, inner, inner, cols, iterations);
+  printf("-----------------------------------------------------\n");
 
-  MatmulConfig seq_ikj_cfg = {
-      .kernel = MATMUL_SEQ_IKJ,
-      .num_threads = 1,
-      .block_size = 1,
-  };
-  double seq_ikj_median = bench_kernel(rows, inner, cols, seq_ikj_cfg, iterations);
-
-  MatmulConfig seq_blocked_ikj_cfg = {
-      .kernel = MATMUL_SEQ_BLOCKED_IKJ,
-      .num_threads = 1,
-      .block_size = block_size,
-  };
-  double seq_blocked_ikj_median = bench_kernel(rows, inner, cols, seq_blocked_ikj_cfg, iterations);
-
-  MatmulConfig par_rows_ijk_cfg = {
-      .kernel = MATMUL_PAR_ROWS_IJK,
-      .num_threads = threads,
-      .block_size = 1,
-  };
-  double par_rows_ijk_median = bench_kernel(rows, inner, cols, par_rows_ijk_cfg, iterations);
-
-  MatmulConfig par_rows_blocked_ikj_cfg = {
-      .kernel = MATMUL_PAR_ROWS_BLOCKED_IKJ,
-      .num_threads = threads,
-      .block_size = block_size,
-  };
-  double par_rows_blocked_ikj_median = bench_kernel(rows, inner, cols, par_rows_blocked_ikj_cfg, iterations);
-
-  MatmulConfig openmp_ikj_cfg = {
-      .kernel = MATMUL_OPENMP_IKJ,
-      .num_threads = threads,
-      .block_size = 1,
-  };
-  double openmp_ikj_median = bench_kernel(rows, inner, cols, openmp_ikj_cfg, iterations);
-
-  if (ref_ijk_median < 0.0 || seq_ikj_median < 0.0 || seq_blocked_ikj_median < 0.0 || par_rows_ijk_median < 0.0 ||
-      par_rows_blocked_ikj_median < 0.0 || openmp_ikj_median < 0.0) {
+  double baseline = bench_config(rows, inner, cols, configs[0], iterations);
+  if (baseline < 0.0) {
     fprintf(stderr, "benchmark failed\n");
     return;
   }
 
-  // sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
-  if (result_file) {
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median, 1.0);
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
-            seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
-            par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
-            seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel), par_rows_blocked_ikj_median,
-            par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
-    fprintf(result_file, "%s,%zu,%zu,%zu,%zu,%s,%f,%f\n", sweep_name, rows, threads, block_size, iterations,
-            matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
-            openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
-  } else {
-    printf("-----------------------------------------------------\n");
-    printf("%-30s: %.6f sec\n", matmul_kernel_name(ref_ijk_cfg.kernel), ref_ijk_median);
-    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_ikj_cfg.kernel), seq_ikj_median,
-           seq_ikj_median > 0.0 ? ref_ijk_median / seq_ikj_median : 0.0);
-    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_ijk_cfg.kernel), par_rows_ijk_median,
-           par_rows_ijk_median > 0.0 ? ref_ijk_median / par_rows_ijk_median : 0.0);
-    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(seq_blocked_ikj_cfg.kernel), seq_blocked_ikj_median,
-           seq_blocked_ikj_median > 0.0 ? ref_ijk_median / seq_blocked_ikj_median : 0.0);
-    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(par_rows_blocked_ikj_cfg.kernel),
-           par_rows_blocked_ikj_median,
-           par_rows_blocked_ikj_median > 0.0 ? ref_ijk_median / par_rows_blocked_ikj_median : 0.0);
-    printf("%-30s: %.6f sec (%.2fx)\n", matmul_kernel_name(openmp_ikj_cfg.kernel), openmp_ikj_median,
-           openmp_ikj_median > 0.0 ? ref_ijk_median / openmp_ikj_median : 0.0);
-    printf("-----------------------------------------------------\n");
+  for (size_t i = 0; i < config_count; ++i) {
+    char label[LABEL_SIZE];
+    if (!matmul_config_label(configs[i], label, sizeof(label))) {
+      snprintf(label, sizeof(label), "unknown");
+    }
+
+    double time_sec = i == 0 ? baseline : bench_config(rows, inner, cols, configs[i], iterations);
+    if (time_sec < 0.0) {
+      fprintf(stderr, "benchmark failed for %s\n", label);
+      return;
+    }
+
+    double speedup = time_sec > 0.0 ? baseline / time_sec : 0.0;
+    printf("%-30s: %.6f sec (%.2fx)\n", label, time_sec, speedup);
+    write_result(output, sweep, rows, inner, cols, configs[i], iterations, time_sec, baseline);
+  }
+
+  printf("-----------------------------------------------------\n");
+}
+
+static void bench_matrix_size_sweep(FILE *output) {
+  const size_t ns[] = {64, 128, 256, 512, 1024};
+  const size_t iterations = 10;
+  const size_t threads = 4;
+  const size_t block = 32;
+
+  for (size_t idx = 0; idx < sizeof(ns) / sizeof(ns[0]); ++idx) {
+    size_t n = ns[idx];
+    MatmulConfig configs[] = {
+        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
+        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+#if TK_ENABLE_OPENMP
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+#endif
+    };
+
+    bench_run_case("matrix_size", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
+  }
+}
+
+static void bench_thread_count_sweep(FILE *output) {
+  const size_t n = 512;
+  const size_t iterations = 10;
+  const size_t thread_counts[] = {1, 2, 3, 4, 5, 6, 7, 8};
+  const size_t block = 32;
+
+  for (size_t idx = 0; idx < sizeof(thread_counts) / sizeof(thread_counts[0]); ++idx) {
+    size_t threads = thread_counts[idx];
+    MatmulConfig configs[] = {
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+#if TK_ENABLE_OPENMP
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+#endif
+    };
+
+    bench_run_case("thread_count", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
+  }
+}
+
+static void bench_block_size_sweep(FILE *output) {
+  const size_t n = 512;
+  const size_t iterations = 10;
+  const size_t threads = 4;
+  const size_t block_sizes[] = {2, 4, 8, 16, 32, 64, 128};
+
+  for (size_t idx = 0; idx < sizeof(block_sizes) / sizeof(block_sizes[0]); ++idx) {
+    size_t block = block_sizes[idx];
+    MatmulConfig configs[] = {
+        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block),
+        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block),
+#if TK_ENABLE_OPENMP
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block),
+#endif
+    };
+
+    bench_run_case("block_size", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
   }
 }
 
 void bench_run_default_suite(const char *output_csv) {
-  FILE *result_file = fopen(output_csv, "w");
-  if (!result_file) {
-    fprintf(stderr, "failed to open benchmark_results.csv for writing\n");
+  const char *path = output_csv ? output_csv : "benchmark_results.csv";
+  FILE *output = fopen(path, "w");
+  if (!output) {
+    fprintf(stderr, "failed to open %s for writing\n", path);
     return;
   }
-  fprintf(result_file, "sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref\n");
 
-  // matrix size sweep
-  bench_run_case(256, 256, 256, 1, 256, 20, result_file, "matrix_size");
-  bench_run_case(512, 512, 512, 1, 512, 20, result_file, "matrix_size");
-  bench_run_case(1024, 1024, 1024, 1, 1024, 20, result_file, "matrix_size");
+  fprintf(output, "sweep,rows,inner,cols,backend,loop_order,use_blocking,num_threads,block_size,iterations,time_sec,"
+                  "speedup_vs_baseline,label\n");
 
-  // thread count sweep
-  bench_run_case(512, 512, 512, 2, 512, 20, result_file, "thread_count");
-  bench_run_case(512, 512, 512, 4, 512, 20, result_file, "thread_count");
-  bench_run_case(512, 512, 512, 8, 512, 20, result_file, "thread_count");
+  bench_matrix_size_sweep(output);
+  bench_thread_count_sweep(output);
+  bench_block_size_sweep(output);
 
-  // block size sweep
-  bench_run_case(512, 512, 512, 1, 32, 20, result_file, "block_size");
-  bench_run_case(512, 512, 512, 1, 64, 20, result_file, "block_size");
-  bench_run_case(512, 512, 512, 1, 128, 20, result_file, "block_size");
-
-  fclose(result_file);
+  fclose(output);
+  printf("\nWrote benchmark results to %s\n", path);
 }
