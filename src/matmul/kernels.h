@@ -7,8 +7,7 @@
 
 static inline size_t tk_min_size(size_t a, size_t b) { return a < b ? a : b; }
 
-static inline void tk_matmul_range_ijk(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start,
-                                       size_t row_end) {
+static inline void tk_matmul_range_ijk(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end) {
   for (size_t i = row_start; i < row_end; ++i) {
     for (size_t j = 0; j < b->cols; ++j) {
       mat_elem_t sum = 0;
@@ -20,8 +19,7 @@ static inline void tk_matmul_range_ijk(const Matrix *a, const Matrix *b, Matrix 
   }
 }
 
-static inline void tk_matmul_range_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start,
-                                       size_t row_end) {
+static inline void tk_matmul_range_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end) {
   for (size_t i = row_start; i < row_end; ++i) {
     for (size_t k = 0; k < a->cols; ++k) {
       mat_elem_t aik = a->data[i * a->cols + k];
@@ -78,6 +76,24 @@ static inline void tk_matmul_range_blocked_ikj(const Matrix *a, const Matrix *b,
         }
       }
     }
+  }
+}
+
+static inline void tk_matmul_range(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg, size_t row_start,
+                                   size_t row_end) {
+  if (cfg.use_blocking) {
+    if (cfg.loop_order == MATMUL_LOOP_IJK) {
+      tk_matmul_range_blocked_ijk(a, b, c, row_start, row_end, cfg.block_size);
+    } else {
+      tk_matmul_range_blocked_ikj(a, b, c, row_start, row_end, cfg.block_size);
+    }
+    return;
+  }
+
+  if (cfg.loop_order == MATMUL_LOOP_IJK) {
+    tk_matmul_range_ijk(a, b, c, row_start, row_end);
+  } else {
+    tk_matmul_range_ikj(a, b, c, row_start, row_end);
   }
 }
 

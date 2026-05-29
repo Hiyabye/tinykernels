@@ -12,14 +12,6 @@
 #define CROSS_MARK "\u2718"
 #define LABEL_SIZE 64
 
-static void test_matrix_fill(Matrix *m) {
-  for (size_t i = 0; i < m->rows; ++i) {
-    for (size_t j = 0; j < m->cols; ++j) {
-      m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
-    }
-  }
-}
-
 static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
   if (!a || !b || !a->data || !b->data) {
     return 0;
@@ -39,18 +31,6 @@ static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
   }
 
   return 1;
-}
-
-static MatmulConfig config_make(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking,
-                                size_t num_threads, size_t block_size) {
-  MatmulConfig cfg = {
-      .backend = backend,
-      .loop_order = loop_order,
-      .use_blocking = use_blocking,
-      .num_threads = num_threads,
-      .block_size = block_size,
-  };
-  return cfg;
 }
 
 static int check_config(const Matrix *a, const Matrix *b, const Matrix *reference, MatmulConfig cfg) {
@@ -77,8 +57,7 @@ static int check_config(const Matrix *a, const Matrix *b, const Matrix *referenc
 }
 
 static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size) {
-  printf("\n[test] A=%zux%zu, B=%zux%zu, threads=%zu, block=%zu\n", rows, inner, inner, cols, threads,
-         block_size);
+  printf("\n[test] A=%zux%zu, B=%zux%zu, threads=%zu, block=%zu\n", rows, inner, inner, cols, threads, block_size);
 
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
@@ -88,10 +67,10 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
     return 0;
   }
 
-  test_matrix_fill(&a);
-  test_matrix_fill(&b);
+  matrix_fill_pattern(&a);
+  matrix_fill_pattern(&b);
 
-  MatmulConfig reference_cfg = config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1);
+  MatmulConfig reference_cfg = matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1);
   Matrix reference = matmul(&a, &b, reference_cfg);
   if (!reference.data) {
     matrix_free(&a);
@@ -100,19 +79,19 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
   }
 
   MatmulConfig configs[] = {
-      config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
-      config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1),
-      config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block_size),
-      config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block_size),
-      config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
-      config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, threads, 1),
-      config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block_size),
-      config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block_size),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block_size),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block_size),
 #if TK_ENABLE_OPENMP
-      config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
-      config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, threads, 1),
-      config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block_size),
-      config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block_size),
 #endif
   };
 

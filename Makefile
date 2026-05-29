@@ -6,7 +6,7 @@ CPPFLAGS += -D_POSIX_C_SOURCE=200809L
 LDFLAGS ?=
 LDLIBS ?= -pthread
 
-OPENMP ?= 1
+OPENMP ?= 0
 ifeq ($(OPENMP),1)
   CFLAGS += -fopenmp
   LDFLAGS += -fopenmp
@@ -44,10 +44,10 @@ run: $(TARGET)
 	./$(TARGET)
 
 test: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) test
 
 bench: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) bench
 	$(MAKE) plots
 
 plots:
@@ -56,7 +56,7 @@ plots:
 debug: CFLAGS := -O0 -g3 -Wall -Wextra -Wpedantic -std=c11
 debug: clean $(TARGET)
 
-sanitize: CFLAGS := $(SAN_CFLAGS) $(BASE_CFLAGS)
+sanitize: CFLAGS := -O1 -g3 -Wall -Wextra -Wpedantic -std=c11 -fsanitize=address,undefined
 sanitize: LDFLAGS += -fsanitize=address,undefined
 sanitize: clean $(TARGET)
 

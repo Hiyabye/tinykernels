@@ -15,23 +15,7 @@ struct PthreadArgs {
 
 static void *pthread_worker(void *arg) {
   struct PthreadArgs *args = arg;
-  MatmulConfig cfg = args->cfg;
-
-  if (cfg.use_blocking) {
-    if (cfg.loop_order == MATMUL_LOOP_IJK) {
-      tk_matmul_range_blocked_ijk(args->a, args->b, args->c, args->row_start, args->row_end, cfg.block_size);
-    } else {
-      tk_matmul_range_blocked_ikj(args->a, args->b, args->c, args->row_start, args->row_end, cfg.block_size);
-    }
-    return NULL;
-  }
-
-  if (cfg.loop_order == MATMUL_LOOP_IJK) {
-    tk_matmul_range_ijk(args->a, args->b, args->c, args->row_start, args->row_end);
-  } else {
-    tk_matmul_range_ikj(args->a, args->b, args->c, args->row_start, args->row_end);
-  }
-
+  tk_matmul_range(args->a, args->b, args->c, args->cfg, args->row_start, args->row_end);
   return NULL;
 }
 

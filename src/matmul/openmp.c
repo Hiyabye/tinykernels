@@ -12,22 +12,14 @@ int tk_matmul_openmp_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulCon
 #pragma omp parallel for num_threads(cfg.num_threads) schedule(static)
     for (size_t i0 = 0; i0 < a->rows; i0 += cfg.block_size) {
       size_t row_end = tk_min_size(i0 + cfg.block_size, a->rows);
-      if (cfg.loop_order == MATMUL_LOOP_IJK) {
-        tk_matmul_range_blocked_ijk(a, b, c, i0, row_end, cfg.block_size);
-      } else {
-        tk_matmul_range_blocked_ikj(a, b, c, i0, row_end, cfg.block_size);
-      }
+      tk_matmul_range(a, b, c, cfg, i0, row_end);
     }
     return 1;
   }
 
 #pragma omp parallel for num_threads(cfg.num_threads) schedule(static)
   for (size_t i = 0; i < a->rows; ++i) {
-    if (cfg.loop_order == MATMUL_LOOP_IJK) {
-      tk_matmul_range_ijk(a, b, c, i, i + 1);
-    } else {
-      tk_matmul_range_ikj(a, b, c, i, i + 1);
-    }
+    tk_matmul_range(a, b, c, cfg, i, i + 1);
   }
 
   return 1;

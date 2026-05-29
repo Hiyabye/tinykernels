@@ -52,6 +52,18 @@ void matrix_fill(Matrix *m, mat_elem_t value) {
   }
 }
 
+void matrix_fill_pattern(Matrix *m) {
+  if (!m || !m->data) {
+    return;
+  }
+
+  for (size_t i = 0; i < m->rows; ++i) {
+    for (size_t j = 0; j < m->cols; ++j) {
+      m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
+    }
+  }
+}
+
 void matrix_print(const Matrix *m) {
   if (!m || !m->data) {
     fprintf(stderr, "invalid matrix\n");

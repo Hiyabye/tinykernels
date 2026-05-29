@@ -1,9 +1,20 @@
 #include "matmul.h"
-#include "matrix.h"
 #include "kernels.h"
+#include "matrix.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+
+MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, size_t num_threads,
+                           size_t block_size) {
+  return (MatmulConfig){
+      .backend = backend,
+      .loop_order = loop_order,
+      .use_blocking = use_blocking,
+      .num_threads = num_threads,
+      .block_size = block_size,
+  };
+}
 
 static int validate_matrices(const Matrix *a, const Matrix *b, const Matrix *c) {
   if (!a || !b || !c || !a->data || !b->data || !c->data) {

@@ -1,151 +1,105 @@
 # tinykernels
 
-`tinykernels` is a learning-oriented CPU kernel project for implementing and benchmarking matrix multiplication optimizations from scratch.
+`tinykernels` is a small C project for learning how matrix multiplication kernels work on the CPU.
 
-The project starts from a naive matrix multiplication implementation and progressively adds loop-order optimization, blocking, pthread parallelism, and OpenMP parallelism. The goal is not to beat vendor libraries; the goal is to understand how low-level implementation choices affect performance.
+It includes a naive baseline, loop-order variants, blocking, pthread parallelism, optional OpenMP, correctness tests, CSV benchmarks, and a plotting script.
 
-## Current scope
-
-- Dense row-major matrix allocation
-- Config-driven matrix multiplication API
-- Output-buffer API via `matmul_into()`
-- Single-threaded kernels
-- pthread row-partitioned kernels
-- OpenMP row-parallel kernels
-- IJK and IKJ loop orders
-- Optional blocking/tiling
-- Correctness tests across matrix shapes, thread counts, and block sizes
-- Median-based benchmark CSV export
-- Matplotlib benchmark plotting script
-
-## Project layout
-
-```text
-include/
-  bench.h
-  matmul.h
-  matrix.h
-  test.h
-src/
-  main.c
-  matrix.c
-  bench.c
-  test.c
-  matmul/
-    matmul.c        # public dispatch and validation
-    kernels.h       # shared internal kernel helpers
-    single.c        # single-thread backend
-    pthread.c       # pthread backend
-    openmp.c        # OpenMP backend
-scripts/
-  plot_benchmarks.py
-assets/
-  matrix_size_sweep.png
-  thread_count_sweep.png
-  block_size_sweep.png
-```
-
-## Matmul configuration
-
-Instead of one enum per kernel, `tinykernels` uses composable configuration flags:
-
-```c
-typedef struct {
-  MatmulBackend backend;      // single, pthread, openmp
-  MatmulLoopOrder loop_order; // ijk, ikj
-  int use_blocking;           // 0 or 1
-  size_t num_threads;
-  size_t block_size;
-} MatmulConfig;
-```
-
-This makes combinations explicit. For example:
-
-| Backend | Loop order | Blocking | Label |
-|---|---|---:|---|
-| single | IJK | off | `single_plain_ijk` |
-| single | IKJ | on | `single_blocked_ikj` |
-| pthread | IKJ | off | `pthread_plain_ikj` |
-| pthread | IKJ | on | `pthread_blocked_ikj` |
-| openmp | IKJ | on | `openmp_blocked_ikj` |
-
-## API
-
-```c
-Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg);
-int matmul_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
-```
-
-`matmul()` is a convenience wrapper that allocates the output matrix. `matmul_into()` writes into an existing output matrix and is better suited for benchmarking and future CUDA-style APIs.
-
-## Benchmark results
-
-The default benchmark suite writes `benchmark_results.csv` and uses median runtime over repeated runs.
-
-### Matrix size sweep
-
-<img src="assets/matrix_size_sweep.png" width="70%">
-
-### Thread count sweep
-
-<img src="assets/thread_count_sweep.png" width="70%">
-
-### Block size sweep
-
-<img src="assets/block_size_sweep.png" width="70%">
-
-## Build and run
-
-```bash
-make run
-```
-
-To regenerate plots after benchmarking:
-
-```bash
-make plots
-```
-
-## Sanitizer build
-
-```bash
-make sanitize
-./tinykernels
-```
-
-## OpenMP notes
-
-OpenMP is enabled by default:
+## Build
 
 ```bash
 make
 ```
 
-To build without OpenMP:
+Run correctness tests:
 
 ```bash
-make OPENMP=0
+make test
 ```
 
-On macOS with Homebrew LLVM, you can pass an LLVM prefix:
+Run benchmarks and regenerate plots:
 
 ```bash
-make LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6
+make bench
 ```
 
-Expected CSV schema:
+Build with sanitizers:
+
+```bash
+make sanitize
+./tinykernels test
+```
+
+OpenMP is disabled by default so the project builds with the default macOS compiler. Enable it when your compiler supports OpenMP:
+
+```bash
+make OPENMP=1
+```
+
+On macOS with Homebrew LLVM:
+
+```bash
+make LLVM_PREFIX=/opt/homebrew/opt/llvm OPENMP=1
+```
+
+## CLI
+
+```bash
+./tinykernels test   # correctness tests
+./tinykernels bench  # benchmark suite
+./tinykernels all    # tests, then benchmarks
+```
+
+Running `./tinykernels` with no arguments defaults to `test`.
+
+## API
+
+```c
+MatmulConfig cfg = matmul_config(
+    MATMUL_BACKEND_PTHREAD,
+    MATMUL_LOOP_IKJ,
+    1,   // use blocking
+    4,   // threads
+    32   // block size
+);
+
+Matrix c = matmul(&a, &b, cfg);
+```
+
+Use `matmul_into()` when you already own the output buffer, especially for benchmarks:
+
+```c
+int ok = matmul_into(&a, &b, &c, cfg);
+```
+
+## Project Layout
 
 ```text
-sweep,n,threads,block_size,iterations,kernel,time_sec,speedup_vs_ref
+include/              public headers
+src/matmul/           matmul dispatch and backends
+src/test.c            correctness tests
+src/bench.c           benchmark suite
+scripts/              benchmark plotting
+assets/               generated plots
+```
+
+## Benchmarks
+
+`make bench` writes `benchmark_results.csv` and refreshes these plots:
+
+<img src="assets/matrix_size_sweep.png" width="70%">
+
+<img src="assets/thread_count_sweep.png" width="70%">
+
+<img src="assets/block_size_sweep.png" width="70%">
+
+CSV columns:
+
+```text
+sweep,rows,inner,cols,backend,loop_order,use_blocking,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
 ```
 
 ## Roadmap
 
-- Add quick/full benchmark modes via CLI arguments
-- Add benchmark environment metadata to README
-- Add profiling notes using `perf`, Instruments, or similar tools
-- Explore `float` vs `double`
-- Explore SIMD/vectorization
-- Port core abstractions to C++ with RAII
-- Add CUDA kernels
-- Extend toward small ML primitives such as linear layers, activation kernels, and normalization kernels
+- Add quick/full benchmark options.
+- Add SIMD experiments.
+- Add CUDA experiments.

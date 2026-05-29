@@ -15,14 +15,6 @@ static double now_seconds(void) {
   return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-static void bench_matrix_fill(Matrix *m) {
-  for (size_t i = 0; i < m->rows; ++i) {
-    for (size_t j = 0; j < m->cols; ++j) {
-      m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
-    }
-  }
-}
-
 static int compare_double(const void *a, const void *b) {
   double x = *(const double *)a;
   double y = *(const double *)b;
@@ -49,18 +41,6 @@ static double median(double *values, size_t n) {
   return (values[n / 2 - 1] + values[n / 2]) / 2.0;
 }
 
-static MatmulConfig config_make(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, size_t num_threads,
-                                size_t block_size) {
-  MatmulConfig cfg = {
-      .backend = backend,
-      .loop_order = loop_order,
-      .use_blocking = use_blocking,
-      .num_threads = num_threads,
-      .block_size = block_size,
-  };
-  return cfg;
-}
-
 static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig cfg, size_t iterations) {
   Matrix a = matrix_new(rows, inner);
   Matrix b = matrix_new(inner, cols);
@@ -73,8 +53,8 @@ static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig 
     return -1.0;
   }
 
-  bench_matrix_fill(&a);
-  bench_matrix_fill(&b);
+  matrix_fill_pattern(&a);
+  matrix_fill_pattern(&b);
 
   double *times = malloc(sizeof(*times) * iterations);
   if (!times) {
@@ -166,13 +146,13 @@ static void bench_matrix_size_sweep(FILE *output) {
   for (size_t idx = 0; idx < sizeof(ns) / sizeof(ns[0]); ++idx) {
     size_t n = ns[idx];
     MatmulConfig configs[] = {
-        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
-        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
 #if TK_ENABLE_OPENMP
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
 #endif
     };
 
@@ -189,11 +169,11 @@ static void bench_thread_count_sweep(FILE *output) {
   for (size_t idx = 0; idx < sizeof(thread_counts) / sizeof(thread_counts[0]); ++idx) {
     size_t threads = thread_counts[idx];
     MatmulConfig configs[] = {
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
 #if TK_ENABLE_OPENMP
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
 #endif
     };
 
@@ -210,13 +190,13 @@ static void bench_block_size_sweep(FILE *output) {
   for (size_t idx = 0; idx < sizeof(block_sizes) / sizeof(block_sizes[0]); ++idx) {
     size_t block = block_sizes[idx];
     MatmulConfig configs[] = {
-        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
-        config_make(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block),
-        config_make(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block),
 #if TK_ENABLE_OPENMP
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
-        config_make(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block),
 #endif
     };
 

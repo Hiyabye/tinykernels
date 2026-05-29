@@ -14,6 +14,7 @@ typedef struct {
 Matrix matrix_new(size_t rows, size_t cols);
 void matrix_free(Matrix *m);
 void matrix_fill(Matrix *m, mat_elem_t value);
+void matrix_fill_pattern(Matrix *m);
 void matrix_print(const Matrix *m);
 
 #endif // MATRIX_H
