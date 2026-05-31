@@ -79,8 +79,29 @@ static inline void tk_matmul_range_blocked_ikj(const Matrix *a, const Matrix *b,
   }
 }
 
+// implemented in neon.c
+void tk_matmul_range_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end);
+void tk_matmul_range_blocked_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end,
+                                      size_t block_size);
+
 static inline void tk_matmul_range(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg, size_t row_start,
                                    size_t row_end) {
+  if (cfg.use_simd) {
+    if (cfg.use_blocking) {
+      if (cfg.loop_order == MATMUL_LOOP_IJK) {
+        // SIMD is currently only implemented for IKJ loop order
+      } else {
+        tk_matmul_range_blocked_simd_ikj(a, b, c, row_start, row_end, cfg.block_size);
+      }
+    } else {
+      if (cfg.loop_order == MATMUL_LOOP_IJK) {
+        // SIMD is currently only implemented for IKJ loop order
+      } else {
+        tk_matmul_range_simd_ikj(a, b, c, row_start, row_end);
+      }
+    }
+  }
+
   if (cfg.use_blocking) {
     if (cfg.loop_order == MATMUL_LOOP_IJK) {
       tk_matmul_range_blocked_ijk(a, b, c, row_start, row_end, cfg.block_size);

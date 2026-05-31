@@ -5,12 +5,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, size_t num_threads,
-                           size_t block_size) {
+MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, int use_simd,
+                           size_t num_threads, size_t block_size) {
   return (MatmulConfig){
       .backend = backend,
       .loop_order = loop_order,
       .use_blocking = use_blocking,
+      .use_simd = use_simd,
       .num_threads = num_threads,
       .block_size = block_size,
   };
@@ -54,6 +55,11 @@ static int validate_config(MatmulConfig cfg) {
 
   if (cfg.use_blocking && cfg.block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
+    return 0;
+  }
+
+  if (cfg.use_simd && cfg.loop_order != MATMUL_LOOP_IKJ) {
+    fprintf(stderr, "SIMD currently requires IKJ loop order\n");
     return 0;
   }
 
@@ -130,7 +136,8 @@ int matmul_config_label(MatmulConfig cfg, char *buf, size_t buf_size) {
   const char *backend = matmul_backend_name(cfg.backend);
   const char *loop = matmul_loop_order_name(cfg.loop_order);
   const char *blocking = cfg.use_blocking ? "blocked" : "plain";
+  const char *simd = cfg.use_simd ? "simd" : "sisd";
 
-  int written = snprintf(buf, buf_size, "%s_%s_%s", backend, blocking, loop);
+  int written = snprintf(buf, buf_size, "%s_%s_%s_%s", backend, blocking, simd, loop);
   return written >= 0 && (size_t)written < buf_size;
 }

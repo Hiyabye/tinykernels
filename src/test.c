@@ -70,7 +70,7 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
   matrix_fill_pattern(&a);
   matrix_fill_pattern(&b);
 
-  MatmulConfig reference_cfg = matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1);
+  MatmulConfig reference_cfg = matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1);
   Matrix reference = matmul(&a, &b, reference_cfg);
   if (!reference.data) {
     matrix_free(&a);
@@ -79,19 +79,19 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
   }
 
   MatmulConfig configs[] = {
-      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1),
-      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1),
-      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 1, block_size),
-      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, block_size),
-      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, threads, 1),
-      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, threads, 1),
-      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, threads, block_size),
-      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 0, 1, 1),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size),
+      matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block_size),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, threads, block_size),
+      matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, threads, block_size),
 #if TK_ENABLE_OPENMP
-      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, threads, 1),
-      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, threads, 1),
-      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, threads, block_size),
-      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, threads, block_size),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 0, threads, 1),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, threads, block_size),
+      matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, threads, block_size),
 #endif
   };
 

@@ -5,6 +5,16 @@
 
 #include <stddef.h>
 
+/*
+ * TODO
+ * single + IKJ + SIMD
+ * single + blocked IKJ + SIMD
+ * pthread + IKJ + SIMD
+ * pthread + blocked IKJ + SIMD
+ * OpenMP + IKJ + SIMD
+ * OpenMP + blocked IKJ + SIMD
+ */
+
 typedef enum {
   MATMUL_BACKEND_SINGLE,
   MATMUL_BACKEND_PTHREAD,
@@ -20,12 +30,13 @@ typedef struct {
   MatmulBackend backend;
   MatmulLoopOrder loop_order;
   int use_blocking;
+  int use_simd;
   size_t num_threads;
   size_t block_size;
 } MatmulConfig;
 
-MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, size_t num_threads,
-                           size_t block_size);
+MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, int use_simd,
+                           size_t num_threads, size_t block_size);
 
 int matmul_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
 Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg);
