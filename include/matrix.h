@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-typedef double mat_elem_t;
+typedef float mat_elem_t;
 
 typedef struct {
   size_t rows;

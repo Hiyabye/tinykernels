@@ -12,7 +12,7 @@
 #define CROSS_MARK "\u2718"
 #define LABEL_SIZE 64
 
-static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
+static int matrix_equal(const Matrix *a, const Matrix *b, mat_elem_t eps) {
   if (!a || !b || !a->data || !b->data) {
     return 0;
   }
@@ -23,7 +23,7 @@ static int matrix_equal(const Matrix *a, const Matrix *b, double eps) {
 
   for (size_t i = 0; i < a->rows; ++i) {
     for (size_t j = 0; j < a->cols; ++j) {
-      double diff = a->data[i * a->cols + j] - b->data[i * b->cols + j];
+      mat_elem_t diff = a->data[i * a->cols + j] - b->data[i * b->cols + j];
       if (diff < -eps || diff > eps) {
         return 0;
       }
