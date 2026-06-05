@@ -58,6 +58,7 @@ MatmulConfig cfg = matmul_config(
     MATMUL_BACKEND_PTHREAD,
     MATMUL_LOOP_IKJ,
     1,   // use blocking
+    0,   // use SIMD
     4,   // threads
     32   // block size
 );
@@ -76,26 +77,25 @@ int ok = matmul_into(&a, &b, &c, cfg);
 ```text
 include/              public headers
 src/matmul/           matmul dispatch and backends
-src/test.c            correctness tests
-src/bench.c           benchmark suite
+tests/                correctness tests
+benchmarks/           benchmark suite, CSV data, and plots
 scripts/              benchmark plotting
-assets/               generated plots
 ```
 
 ## Benchmarks
 
-`make bench` writes `benchmark_results.csv` and refreshes these plots:
+`make bench` writes `benchmarks/data/benchmark_results.csv` and refreshes these plots:
 
-<img src="assets/matrix_size_sweep.png" width="70%">
+<img src="benchmarks/plots/matrix_size_sweep.png" width="70%">
 
-<img src="assets/thread_count_sweep.png" width="70%">
+<img src="benchmarks/plots/thread_count_sweep.png" width="70%">
 
-<img src="assets/block_size_sweep.png" width="70%">
+<img src="benchmarks/plots/block_size_sweep.png" width="70%">
 
 CSV columns:
 
 ```text
-sweep,rows,inner,cols,backend,loop_order,use_blocking,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
+sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
 ```
 
 ## Roadmap

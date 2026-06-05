@@ -1,5 +1,5 @@
-#include "bench.h"
-#include "test.h"
+#include "bench_matmul.h"
+#include "test_matmul.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
   }
 
   if (strcmp(mode, "bench") == 0) {
-    bench_run_default_suite("benchmark_results.csv");
+    bench_run_default_suite("benchmarks/data/benchmark_results.csv");
     return 0;
   }
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     if (run_tests() != 0) {
       return 1;
     }
-    bench_run_default_suite("benchmark_results.csv");
+    bench_run_default_suite("benchmarks/data/benchmark_results.csv");
     return 0;
   }
 

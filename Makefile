@@ -1,7 +1,7 @@
 CC ?= cc
 
 CFLAGS ?= -O3 -march=native -Wall -Wextra -Wpedantic -std=c11
-CPPFLAGS ?= -Iinclude
+CPPFLAGS ?= -Iinclude -Ibenchmarks -Itests
 CPPFLAGS += -D_POSIX_C_SOURCE=200809L
 LDFLAGS ?=
 LDLIBS ?= -pthread
@@ -23,10 +23,15 @@ endif
 
 TARGET := tinykernels
 SRC_DIR := src
+TEST_DIR := tests
+BENCH_DIR := benchmarks
 BUILD_DIR := build
+BENCH_DATA_DIR := benchmarks/data
+BENCH_PLOT_DIR := benchmarks/plots
+MPLCONFIGDIR ?= $(BUILD_DIR)/matplotlib
 
-SRCS := $(shell find $(SRC_DIR) -name '*.c' | sort)
-OBJS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(SRCS))
+SRCS := $(shell find $(SRC_DIR) $(TEST_DIR) $(BENCH_DIR) -name '*.c' | sort)
+OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS := $(OBJS:.o=.d)
 
 .PHONY: all clean run test bench debug sanitize plots
@@ -36,7 +41,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
@@ -47,11 +52,13 @@ test: $(TARGET)
 	./$(TARGET) test
 
 bench: $(TARGET)
+	@mkdir -p $(BENCH_DATA_DIR) $(BENCH_PLOT_DIR)
 	./$(TARGET) bench
 	$(MAKE) plots
 
 plots:
-	python3 scripts/plot_benchmarks.py benchmark_results.csv assets
+	@mkdir -p $(BENCH_PLOT_DIR) $(MPLCONFIGDIR)
+	MPLCONFIGDIR=$(MPLCONFIGDIR) python3 scripts/plot_benchmarks.py $(BENCH_DATA_DIR)/benchmark_results.csv $(BENCH_PLOT_DIR)
 
 debug: CFLAGS := -O0 -g3 -Wall -Wextra -Wpedantic -std=c11
 debug: clean $(TARGET)
