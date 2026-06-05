@@ -3,11 +3,11 @@
 Plot tinykernels benchmark CSV results.
 
 Expected CSV columns:
-  sweep,rows,inner,cols,backend,loop_order,use_blocking,num_threads,
-  block_size,iterations,time_sec,speedup_vs_baseline,label
+  sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,
+  num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
 
 Usage:
-  python3 scripts/plot_benchmarks.py benchmark_results.csv assets
+  python3 scripts/plot_benchmarks.py benchmarks/data/benchmark_results.csv benchmarks/plots
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
