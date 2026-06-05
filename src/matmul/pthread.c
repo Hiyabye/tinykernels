@@ -5,70 +5,71 @@
 #include <stdlib.h>
 
 struct PthreadArgs {
-  const Matrix *a;
-  const Matrix *b;
-  Matrix *c;
-  MatmulConfig cfg;
+  const Matrix *lhs;
+  const Matrix *rhs;
+  Matrix *out;
+  MatmulConfig config;
   size_t row_start;
   size_t row_end;
 };
 
-static void *pthread_worker(void *arg) {
-  struct PthreadArgs *args = arg;
-  tk_matmul_range(args->a, args->b, args->c, args->cfg, args->row_start, args->row_end);
+static void *pthread_worker(void *worker_arg) {
+  struct PthreadArgs *worker_args = worker_arg;
+  tk_matmul_range(worker_args->lhs, worker_args->rhs, worker_args->out, worker_args->config, worker_args->row_start,
+                  worker_args->row_end);
   return NULL;
 }
 
-int tk_matmul_pthread_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg) {
-  size_t num_threads = cfg.num_threads;
-  if (num_threads > a->rows) {
-    num_threads = a->rows;
+int tk_matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
+  size_t worker_count = config.num_threads;
+  if (worker_count > lhs->rows) {
+    worker_count = lhs->rows;
   }
 
-  pthread_t *threads = malloc(sizeof(*threads) * num_threads);
-  struct PthreadArgs *args = malloc(sizeof(*args) * num_threads);
-  if (!threads || !args) {
+  pthread_t *threads = malloc(sizeof(*threads) * worker_count);
+  struct PthreadArgs *worker_args = malloc(sizeof(*worker_args) * worker_count);
+  if (!threads || !worker_args) {
     fprintf(stderr, "memory allocation failed\n");
     free(threads);
-    free(args);
+    free(worker_args);
     return 0;
   }
 
-  size_t rows_per_thread = a->rows / num_threads;
-  size_t remainder = a->rows % num_threads;
+  size_t rows_per_worker = lhs->rows / worker_count;
+  size_t extra_rows = lhs->rows % worker_count;
   size_t current_row = 0;
 
-  for (size_t t = 0; t < num_threads; ++t) {
-    size_t rows_for_thread = rows_per_thread + (t < remainder ? 1 : 0);
+  for (size_t worker_index = 0; worker_index < worker_count; ++worker_index) {
+    size_t rows_for_worker = rows_per_worker + (worker_index < extra_rows ? 1 : 0);
 
-    args[t].a = a;
-    args[t].b = b;
-    args[t].c = c;
-    args[t].cfg = cfg;
-    args[t].row_start = current_row;
-    args[t].row_end = current_row + rows_for_thread;
-    current_row = args[t].row_end;
+    worker_args[worker_index].lhs = lhs;
+    worker_args[worker_index].rhs = rhs;
+    worker_args[worker_index].out = out;
+    worker_args[worker_index].config = config;
+    worker_args[worker_index].row_start = current_row;
+    worker_args[worker_index].row_end = current_row + rows_for_worker;
+    current_row = worker_args[worker_index].row_end;
 
-    int err = pthread_create(&threads[t], NULL, pthread_worker, &args[t]);
-    if (err != 0) {
+    int create_error = pthread_create(&threads[worker_index], NULL, pthread_worker, &worker_args[worker_index]);
+    if (create_error != 0) {
       fprintf(stderr, "pthread_create failed\n");
-      for (size_t joined = 0; joined < t; ++joined) {
-        pthread_join(threads[joined], NULL);
+      for (size_t joined_index = 0; joined_index < worker_index; ++joined_index) {
+        pthread_join(threads[joined_index], NULL);
       }
       free(threads);
-      free(args);
+      free(worker_args);
       return 0;
     }
   }
 
-  int ok = 1;
-  for (size_t t = 0; t < num_threads; ++t) {
-    if (pthread_join(threads[t], NULL) != 0) {
-      ok = 0;
+  int all_threads_joined = 1;
+  for (size_t worker_index = 0; worker_index < worker_count; ++worker_index) {
+    if (pthread_join(threads[worker_index], NULL) != 0) {
+      all_threads_joined = 0;
     }
   }
 
   free(threads);
-  free(args);
-  return ok;
+  free(worker_args);
+  return all_threads_joined;
 }

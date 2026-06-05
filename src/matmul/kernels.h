@@ -5,7 +5,7 @@
 
 #include <stddef.h>
 
-static inline size_t tk_min_size(size_t a, size_t b) { return a < b ? a : b; }
+static inline size_t tk_min_size(size_t x, size_t y) { return x < y ? x : y; }
 
 #if defined(__aarch64__)
 #define TK_HAVE_NEON 1
@@ -13,47 +13,49 @@ static inline size_t tk_min_size(size_t a, size_t b) { return a < b ? a : b; }
 #define TK_HAVE_NEON 0
 #endif
 
-static inline void tk_matmul_range_ijk(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end) {
-  for (size_t i = row_start; i < row_end; ++i) {
-    for (size_t j = 0; j < b->cols; ++j) {
+static inline void tk_matmul_range_ijk(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
+                                       size_t row_end) {
+  for (size_t row = row_start; row < row_end; ++row) {
+    for (size_t col = 0; col < rhs->cols; ++col) {
       mat_elem_t sum = 0;
-      for (size_t k = 0; k < a->cols; ++k) {
-        sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
+      for (size_t inner = 0; inner < lhs->cols; ++inner) {
+        sum += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
       }
-      c->data[i * c->cols + j] = sum;
+      out->data[row * out->cols + col] = sum;
     }
   }
 }
 
-static inline void tk_matmul_range_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end) {
-  for (size_t i = row_start; i < row_end; ++i) {
-    for (size_t k = 0; k < a->cols; ++k) {
-      mat_elem_t aik = a->data[i * a->cols + k];
-      for (size_t j = 0; j < b->cols; ++j) {
-        c->data[i * c->cols + j] += aik * b->data[k * b->cols + j];
+static inline void tk_matmul_range_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
+                                       size_t row_end) {
+  for (size_t row = row_start; row < row_end; ++row) {
+    for (size_t inner = 0; inner < lhs->cols; ++inner) {
+      mat_elem_t lhs_val = lhs->data[row * lhs->cols + inner];
+      for (size_t col = 0; col < rhs->cols; ++col) {
+        out->data[row * out->cols + col] += lhs_val * rhs->data[inner * rhs->cols + col];
       }
     }
   }
 }
 
-static inline void tk_matmul_range_blocked_ijk(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start,
+static inline void tk_matmul_range_blocked_ijk(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
                                                size_t row_end, size_t block_size) {
-  for (size_t i0 = row_start; i0 < row_end; i0 += block_size) {
-    size_t i_max = tk_min_size(i0 + block_size, row_end);
+  for (size_t row0 = row_start; row0 < row_end; row0 += block_size) {
+    size_t row1 = tk_min_size(row0 + block_size, row_end);
 
-    for (size_t j0 = 0; j0 < b->cols; j0 += block_size) {
-      size_t j_max = tk_min_size(j0 + block_size, b->cols);
+    for (size_t col0 = 0; col0 < rhs->cols; col0 += block_size) {
+      size_t col1 = tk_min_size(col0 + block_size, rhs->cols);
 
-      for (size_t k0 = 0; k0 < a->cols; k0 += block_size) {
-        size_t k_max = tk_min_size(k0 + block_size, a->cols);
+      for (size_t inner0 = 0; inner0 < lhs->cols; inner0 += block_size) {
+        size_t inner1 = tk_min_size(inner0 + block_size, lhs->cols);
 
-        for (size_t i = i0; i < i_max; ++i) {
-          for (size_t j = j0; j < j_max; ++j) {
-            mat_elem_t sum = c->data[i * c->cols + j];
-            for (size_t k = k0; k < k_max; ++k) {
-              sum += a->data[i * a->cols + k] * b->data[k * b->cols + j];
+        for (size_t row = row0; row < row1; ++row) {
+          for (size_t col = col0; col < col1; ++col) {
+            mat_elem_t sum = out->data[row * out->cols + col];
+            for (size_t inner = inner0; inner < inner1; ++inner) {
+              sum += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
             }
-            c->data[i * c->cols + j] = sum;
+            out->data[row * out->cols + col] = sum;
           }
         }
       }
@@ -61,22 +63,22 @@ static inline void tk_matmul_range_blocked_ijk(const Matrix *a, const Matrix *b,
   }
 }
 
-static inline void tk_matmul_range_blocked_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start,
+static inline void tk_matmul_range_blocked_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
                                                size_t row_end, size_t block_size) {
-  for (size_t i0 = row_start; i0 < row_end; i0 += block_size) {
-    size_t i_max = tk_min_size(i0 + block_size, row_end);
+  for (size_t row0 = row_start; row0 < row_end; row0 += block_size) {
+    size_t row1 = tk_min_size(row0 + block_size, row_end);
 
-    for (size_t k0 = 0; k0 < a->cols; k0 += block_size) {
-      size_t k_max = tk_min_size(k0 + block_size, a->cols);
+    for (size_t inner0 = 0; inner0 < lhs->cols; inner0 += block_size) {
+      size_t inner1 = tk_min_size(inner0 + block_size, lhs->cols);
 
-      for (size_t j0 = 0; j0 < b->cols; j0 += block_size) {
-        size_t j_max = tk_min_size(j0 + block_size, b->cols);
+      for (size_t col0 = 0; col0 < rhs->cols; col0 += block_size) {
+        size_t col1 = tk_min_size(col0 + block_size, rhs->cols);
 
-        for (size_t i = i0; i < i_max; ++i) {
-          for (size_t k = k0; k < k_max; ++k) {
-            mat_elem_t aik = a->data[i * a->cols + k];
-            for (size_t j = j0; j < j_max; ++j) {
-              c->data[i * c->cols + j] += aik * b->data[k * b->cols + j];
+        for (size_t row = row0; row < row1; ++row) {
+          for (size_t inner = inner0; inner < inner1; ++inner) {
+            mat_elem_t lhs_val = lhs->data[row * lhs->cols + inner];
+            for (size_t col = col0; col < col1; ++col) {
+              out->data[row * out->cols + col] += lhs_val * rhs->data[inner * rhs->cols + col];
             }
           }
         }
@@ -86,48 +88,44 @@ static inline void tk_matmul_range_blocked_ikj(const Matrix *a, const Matrix *b,
 }
 
 // implemented in neon.c
-void tk_matmul_range_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end);
-void tk_matmul_range_blocked_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end,
-                                      size_t block_size);
+void tk_matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end);
+void tk_matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
+                                      size_t row_end, size_t block_size);
 
-static inline void tk_matmul_range(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg, size_t row_start,
-                                   size_t row_end) {
-  if (cfg.use_simd && TK_HAVE_NEON) {
-    if (cfg.use_blocking) {
-      if (cfg.loop_order == MATMUL_LOOP_IJK) {
-        // SIMD is currently only implemented for IKJ loop order
-      } else {
-        tk_matmul_range_blocked_simd_ikj(a, b, c, row_start, row_end, cfg.block_size);
-        return;
-      }
+static inline void tk_matmul_range_scalar(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config,
+                                          size_t row_start, size_t row_end) {
+  if (config.use_blocking) {
+    if (config.loop_order == MATMUL_LOOP_IJK) {
+      tk_matmul_range_blocked_ijk(lhs, rhs, out, row_start, row_end, config.block_size);
     } else {
-      if (cfg.loop_order == MATMUL_LOOP_IJK) {
-        // SIMD is currently only implemented for IKJ loop order
-      } else {
-        tk_matmul_range_simd_ikj(a, b, c, row_start, row_end);
-        return;
-      }
-    }
-  }
-
-  if (cfg.use_blocking) {
-    if (cfg.loop_order == MATMUL_LOOP_IJK) {
-      tk_matmul_range_blocked_ijk(a, b, c, row_start, row_end, cfg.block_size);
-    } else {
-      tk_matmul_range_blocked_ikj(a, b, c, row_start, row_end, cfg.block_size);
+      tk_matmul_range_blocked_ikj(lhs, rhs, out, row_start, row_end, config.block_size);
     }
     return;
   }
 
-  if (cfg.loop_order == MATMUL_LOOP_IJK) {
-    tk_matmul_range_ijk(a, b, c, row_start, row_end);
+  if (config.loop_order == MATMUL_LOOP_IJK) {
+    tk_matmul_range_ijk(lhs, rhs, out, row_start, row_end);
   } else {
-    tk_matmul_range_ikj(a, b, c, row_start, row_end);
+    tk_matmul_range_ikj(lhs, rhs, out, row_start, row_end);
   }
 }
 
-int tk_matmul_single_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
-int tk_matmul_pthread_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
-int tk_matmul_openmp_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
+static inline void tk_matmul_range(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config,
+                                   size_t row_start, size_t row_end) {
+  if (config.use_simd && TK_HAVE_NEON) {
+    if (config.use_blocking) {
+      tk_matmul_range_blocked_simd_ikj(lhs, rhs, out, row_start, row_end, config.block_size);
+    } else {
+      tk_matmul_range_simd_ikj(lhs, rhs, out, row_start, row_end);
+    }
+    return;
+  }
+
+  tk_matmul_range_scalar(lhs, rhs, out, config, row_start, row_end);
+}
+
+int tk_matmul_single_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config);
+int tk_matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config);
+int tk_matmul_openmp_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config);
 
 #endif // TINYKERNELS_MATMUL_KERNELS_H

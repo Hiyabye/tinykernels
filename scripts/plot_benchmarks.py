@@ -54,8 +54,8 @@ def _finish_plot(output_path: Path, *, log_y: bool = False) -> None:
     plt.close()
 
 
-def plot_matrix_size_sweep(df: pd.DataFrame, output_dir: Path) -> None:
-    data = df[df["sweep"] == "matrix_size"].copy()
+def plot_matrix_size_sweep(results: pd.DataFrame, output_dir: Path) -> None:
+    data = results[results["sweep"] == "matrix_size"].copy()
     if data.empty:
         return
 
@@ -72,8 +72,8 @@ def plot_matrix_size_sweep(df: pd.DataFrame, output_dir: Path) -> None:
     _finish_plot(output_dir / "matrix_size_sweep.png", log_y=True)
 
 
-def plot_thread_count_sweep(df: pd.DataFrame, output_dir: Path) -> None:
-    data = df[df["sweep"] == "thread_count"].copy()
+def plot_thread_count_sweep(results: pd.DataFrame, output_dir: Path) -> None:
+    data = results[results["sweep"] == "thread_count"].copy()
     if data.empty:
         return
 
@@ -95,8 +95,8 @@ def plot_thread_count_sweep(df: pd.DataFrame, output_dir: Path) -> None:
     _finish_plot(output_dir / "thread_count_sweep.png")
 
 
-def plot_block_size_sweep(df: pd.DataFrame, output_dir: Path) -> None:
-    data = df[df["sweep"] == "block_size"].copy()
+def plot_block_size_sweep(results: pd.DataFrame, output_dir: Path) -> None:
+    data = results[results["sweep"] == "block_size"].copy()
     if data.empty:
         return
 
@@ -120,11 +120,11 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    df = pd.read_csv(args.csv_path)
+    results = pd.read_csv(args.csv_path)
 
-    plot_matrix_size_sweep(df, args.output_dir)
-    plot_thread_count_sweep(df, args.output_dir)
-    plot_block_size_sweep(df, args.output_dir)
+    plot_matrix_size_sweep(results, args.output_dir)
+    plot_thread_count_sweep(results, args.output_dir)
+    plot_block_size_sweep(results, args.output_dir)
 
 
 if __name__ == "__main__":

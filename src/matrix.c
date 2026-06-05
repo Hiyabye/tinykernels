@@ -16,63 +16,64 @@ Matrix matrix_new(size_t rows, size_t cols) {
     return (Matrix){0, 0, NULL};
   }
 
-  size_t len = rows * cols;
-  if (len > SIZE_MAX / sizeof(mat_elem_t)) {
+  size_t element_count = rows * cols;
+  if (element_count > SIZE_MAX / sizeof(mat_elem_t)) {
     fprintf(stderr, "matrix byte size overflow\n");
     return (Matrix){0, 0, NULL};
   }
 
-  Matrix m = {rows, cols, calloc(len, sizeof(mat_elem_t))};
-  if (!m.data) {
+  Matrix mat = {rows, cols, calloc(element_count, sizeof(mat_elem_t))};
+  if (!mat.data) {
     fprintf(stderr, "memory allocation failed\n");
     return (Matrix){0, 0, NULL};
   }
 
-  return m;
+  return mat;
 }
 
-void matrix_free(Matrix *m) {
-  if (!m || !m->data) {
+void matrix_free(Matrix *mat) {
+  if (!mat || !mat->data) {
     return;
   }
 
-  free(m->data);
-  m->data = NULL;
-  m->rows = 0;
-  m->cols = 0;
+  free(mat->data);
+  mat->data = NULL;
+  mat->rows = 0;
+  mat->cols = 0;
 }
 
-void matrix_fill(Matrix *m, mat_elem_t value) {
-  if (!m || !m->data) {
+void matrix_fill(Matrix *mat, mat_elem_t value) {
+  if (!mat || !mat->data) {
     return;
   }
 
-  for (size_t i = 0; i < m->rows * m->cols; ++i) {
-    m->data[i] = value;
+  size_t element_count = mat->rows * mat->cols;
+  for (size_t index = 0; index < element_count; ++index) {
+    mat->data[index] = value;
   }
 }
 
-void matrix_fill_pattern(Matrix *m) {
-  if (!m || !m->data) {
+void matrix_fill_pattern(Matrix *mat) {
+  if (!mat || !mat->data) {
     return;
   }
 
-  for (size_t i = 0; i < m->rows; ++i) {
-    for (size_t j = 0; j < m->cols; ++j) {
-      m->data[i * m->cols + j] = (mat_elem_t)((i + j) % 10 + 1);
+  for (size_t row = 0; row < mat->rows; ++row) {
+    for (size_t col = 0; col < mat->cols; ++col) {
+      mat->data[row * mat->cols + col] = (mat_elem_t)((row + col) % 10 + 1);
     }
   }
 }
 
-void matrix_print(const Matrix *m) {
-  if (!m || !m->data) {
+void matrix_print(const Matrix *mat) {
+  if (!mat || !mat->data) {
     fprintf(stderr, "invalid matrix\n");
     return;
   }
 
-  for (size_t i = 0; i < m->rows; ++i) {
-    for (size_t j = 0; j < m->cols; ++j) {
-      printf("%f ", m->data[i * m->cols + j]);
+  for (size_t row = 0; row < mat->rows; ++row) {
+    for (size_t col = 0; col < mat->cols; ++col) {
+      printf("%f ", mat->data[row * mat->cols + col]);
     }
     printf("\n");
   }

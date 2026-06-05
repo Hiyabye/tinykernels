@@ -10,95 +10,96 @@
 #define LABEL_SIZE 64
 
 static double now_seconds(void) {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return ts.tv_sec + ts.tv_nsec / 1e9;
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return now.tv_sec + now.tv_nsec / 1e9;
 }
 
-static int compare_double(const void *a, const void *b) {
-  double x = *(const double *)a;
-  double y = *(const double *)b;
+static int compare_double(const void *lhs_ptr, const void *rhs_ptr) {
+  double lhs = *(const double *)lhs_ptr;
+  double rhs = *(const double *)rhs_ptr;
 
-  if (x < y) {
+  if (lhs < rhs) {
     return -1;
   }
-  if (x > y) {
+  if (lhs > rhs) {
     return 1;
   }
   return 0;
 }
 
-static double median(double *values, size_t n) {
-  if (!values || n == 0) {
+static double median(double *values, size_t value_count) {
+  if (!values || value_count == 0) {
     return -1.0;
   }
 
-  qsort(values, n, sizeof(double), compare_double);
+  qsort(values, value_count, sizeof(double), compare_double);
 
-  if (n % 2 == 1) {
-    return values[n / 2];
+  size_t mid = value_count / 2;
+  if (value_count % 2 == 1) {
+    return values[mid];
   }
-  return (values[n / 2 - 1] + values[n / 2]) / 2.0;
+  return (values[mid - 1] + values[mid]) / 2.0;
 }
 
-static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig cfg, size_t iterations) {
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-  Matrix c = matrix_new(rows, cols);
+static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig config, size_t iterations) {
+  Matrix lhs = matrix_new(rows, inner);
+  Matrix rhs = matrix_new(inner, cols);
+  Matrix out = matrix_new(rows, cols);
 
-  if (!a.data || !b.data || !c.data) {
-    matrix_free(&a);
-    matrix_free(&b);
-    matrix_free(&c);
+  if (!lhs.data || !rhs.data || !out.data) {
+    matrix_free(&lhs);
+    matrix_free(&rhs);
+    matrix_free(&out);
     return -1.0;
   }
 
-  matrix_fill_pattern(&a);
-  matrix_fill_pattern(&b);
+  matrix_fill_pattern(&lhs);
+  matrix_fill_pattern(&rhs);
 
   double *times = malloc(sizeof(*times) * iterations);
   if (!times) {
-    matrix_free(&a);
-    matrix_free(&b);
-    matrix_free(&c);
+    matrix_free(&lhs);
+    matrix_free(&rhs);
+    matrix_free(&out);
     return -1.0;
   }
 
   double result = -1.0;
-  for (size_t i = 0; i < iterations; ++i) {
-    double start = now_seconds();
-    int ok = matmul_into(&a, &b, &c, cfg);
-    double end = now_seconds();
+  for (size_t iter = 0; iter < iterations; ++iter) {
+    double start_sec = now_seconds();
+    int multiplied = matmul_into(&lhs, &rhs, &out, config);
+    double end_sec = now_seconds();
 
-    if (!ok) {
+    if (!multiplied) {
       goto cleanup;
     }
 
-    times[i] = end - start;
+    times[iter] = end_sec - start_sec;
   }
 
   result = median(times, iterations);
 
 cleanup:
   free(times);
-  matrix_free(&a);
-  matrix_free(&b);
-  matrix_free(&c);
+  matrix_free(&lhs);
+  matrix_free(&rhs);
+  matrix_free(&out);
   return result;
 }
 
-static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig cfg,
+static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig config,
                          size_t iterations, double time_sec, double baseline_sec) {
   char label[LABEL_SIZE];
-  if (!matmul_config_label(cfg, label, sizeof(label))) {
+  if (!matmul_config_label(config, label, sizeof(label))) {
     snprintf(label, sizeof(label), "unknown");
   }
 
   double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
 
   fprintf(output, "%s,%zu,%zu,%zu,%s,%s,%d,%d,%zu,%zu,%zu,%f,%f,%s\n", sweep, rows, inner, cols,
-          matmul_backend_name(cfg.backend), matmul_loop_order_name(cfg.loop_order), cfg.use_blocking, cfg.use_simd,
-          cfg.num_threads, cfg.block_size, iterations, time_sec, speedup, label);
+          matmul_backend_name(config.backend), matmul_loop_order_name(config.loop_order), config.use_blocking,
+          config.use_simd, config.num_threads, config.block_size, iterations, time_sec, speedup, label);
 }
 
 static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t cols, size_t iterations,
@@ -111,98 +112,101 @@ static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t 
   printf("\n[benchmark] %s: A=%zux%zu, B=%zux%zu, iterations=%zu\n", sweep, rows, inner, inner, cols, iterations);
   printf("-----------------------------------------------------\n");
 
-  double baseline = bench_config(rows, inner, cols, configs[0], iterations);
-  if (baseline < 0.0) {
+  double baseline_sec = bench_config(rows, inner, cols, configs[0], iterations);
+  if (baseline_sec < 0.0) {
     fprintf(stderr, "benchmark failed\n");
     return;
   }
 
-  for (size_t i = 0; i < config_count; ++i) {
+  for (size_t config_idx = 0; config_idx < config_count; ++config_idx) {
     char label[LABEL_SIZE];
-    if (!matmul_config_label(configs[i], label, sizeof(label))) {
+    if (!matmul_config_label(configs[config_idx], label, sizeof(label))) {
       snprintf(label, sizeof(label), "unknown");
     }
 
-    double time_sec = i == 0 ? baseline : bench_config(rows, inner, cols, configs[i], iterations);
+    double time_sec = config_idx == 0 ? baseline_sec : bench_config(rows, inner, cols, configs[config_idx], iterations);
     if (time_sec < 0.0) {
       fprintf(stderr, "benchmark failed for %s\n", label);
       return;
     }
 
-    double speedup = time_sec > 0.0 ? baseline / time_sec : 0.0;
+    double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
     printf("%-30s: %.6f sec (%.2fx)\n", label, time_sec, speedup);
-    write_result(output, sweep, rows, inner, cols, configs[i], iterations, time_sec, baseline);
+    write_result(output, sweep, rows, inner, cols, configs[config_idx], iterations, time_sec, baseline_sec);
   }
 
   printf("-----------------------------------------------------\n");
 }
 
 static void bench_matrix_size_sweep(FILE *output) {
-  const size_t ns[] = {64, 128, 256, 512, 1024};
+  const size_t matrix_sizes[] = {64, 128, 256, 512, 1024};
   const size_t iterations = 10;
-  const size_t threads = 4;
-  const size_t block = 32;
+  const size_t thread_count = 4;
+  const size_t block_size = 32;
 
-  for (size_t idx = 0; idx < sizeof(ns) / sizeof(ns[0]); ++idx) {
-    size_t n = ns[idx];
+  for (size_t size_idx = 0; size_idx < sizeof(matrix_sizes) / sizeof(matrix_sizes[0]); ++size_idx) {
+    size_t matrix_size = matrix_sizes[size_idx];
     MatmulConfig configs[] = {
         matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, threads, 1),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
         matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size),
 #if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, threads, 1),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
 #endif
     };
 
-    bench_run_case("matrix_size", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
+    bench_run_case("matrix_size", matrix_size, matrix_size, matrix_size, iterations, configs,
+                   sizeof(configs) / sizeof(configs[0]), output);
   }
 }
 
 static void bench_thread_count_sweep(FILE *output) {
-  const size_t n = 512;
+  const size_t matrix_size = 512;
   const size_t iterations = 10;
   const size_t thread_counts[] = {1, 2, 3, 4, 5, 6, 7, 8};
-  const size_t block = 32;
+  const size_t block_size = 32;
 
-  for (size_t idx = 0; idx < sizeof(thread_counts) / sizeof(thread_counts[0]); ++idx) {
-    size_t threads = thread_counts[idx];
+  for (size_t thread_idx = 0; thread_idx < sizeof(thread_counts) / sizeof(thread_counts[0]); ++thread_idx) {
+    size_t thread_count = thread_counts[thread_idx];
     MatmulConfig configs[] = {
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, threads, 1),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
 #if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, threads, 1),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
 #endif
     };
 
-    bench_run_case("thread_count", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
+    bench_run_case("thread_count", matrix_size, matrix_size, matrix_size, iterations, configs,
+                   sizeof(configs) / sizeof(configs[0]), output);
   }
 }
 
 static void bench_block_size_sweep(FILE *output) {
-  const size_t n = 512;
+  const size_t matrix_size = 512;
   const size_t iterations = 10;
-  const size_t threads = 4;
+  const size_t thread_count = 4;
   const size_t block_sizes[] = {2, 4, 8, 16, 32, 64, 128};
 
-  for (size_t idx = 0; idx < sizeof(block_sizes) / sizeof(block_sizes[0]); ++idx) {
-    size_t block = block_sizes[idx];
+  for (size_t block_idx = 0; block_idx < sizeof(block_sizes) / sizeof(block_sizes[0]); ++block_idx) {
+    size_t block_size = block_sizes[block_idx];
     MatmulConfig configs[] = {
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, threads, block),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
+        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block_size),
+        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size),
 #if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, threads, block),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, threads, block),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
+        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size),
 #endif
     };
 
-    bench_run_case("block_size", n, n, n, iterations, configs, sizeof(configs) / sizeof(configs[0]), output);
+    bench_run_case("block_size", matrix_size, matrix_size, matrix_size, iterations, configs,
+                   sizeof(configs) / sizeof(configs[0]), output);
   }
 }
 

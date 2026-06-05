@@ -1,86 +1,83 @@
 #include "kernels.h"
 #include "matrix.h"
 
-#include <assert.h>
 #include <stddef.h>
 
 #if defined(__aarch64__)
 #include <arm_neon.h>
 #endif
 
-void tk_matmul_range_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end) {
+void tk_matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end) {
 #if defined(__aarch64__)
-  if (sizeof(mat_elem_t) == sizeof(float)) {
-    for (size_t i = row_start; i < row_end; ++i) {
-      for (size_t k = 0; k < a->cols; ++k) {
-        float32x4_t aik_vec = vdupq_n_f32(a->data[i * a->cols + k]);
-        size_t j = 0;
+  _Static_assert(sizeof(mat_elem_t) == sizeof(float), "NEON matmul kernel requires float elements");
 
-        for (; j + 4 <= b->cols; j += 4) {
-          float32x4_t b_vec = vld1q_f32(&b->data[k * b->cols + j]);
-          float32x4_t c_vec = vld1q_f32(&c->data[i * c->cols + j]);
+  for (size_t row = row_start; row < row_end; ++row) {
+    for (size_t inner = 0; inner < lhs->cols; ++inner) {
+      float32x4_t lhs_vec = vdupq_n_f32(lhs->data[row * lhs->cols + inner]);
+      size_t col = 0;
 
-          c_vec = vfmaq_f32(c_vec, aik_vec, b_vec);
-          vst1q_f32(&c->data[i * c->cols + j], c_vec);
-        }
+      for (; col + 4 <= rhs->cols; col += 4) {
+        float32x4_t rhs_vec = vld1q_f32(&rhs->data[inner * rhs->cols + col]);
+        float32x4_t out_vec = vld1q_f32(&out->data[row * out->cols + col]);
 
-        for (; j < b->cols; ++j) {
-          c->data[i * c->cols + j] += a->data[i * a->cols + k] * b->data[k * b->cols + j];
-        }
+        out_vec = vfmaq_f32(out_vec, lhs_vec, rhs_vec);
+        vst1q_f32(&out->data[row * out->cols + col], out_vec);
+      }
+
+      for (; col < rhs->cols; ++col) {
+        out->data[row * out->cols + col] += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
       }
     }
-  } else if (sizeof(mat_elem_t) == sizeof(double)) {
-    assert(0 && "not implemented yet");
   }
 #else
-  (void)a;
-  (void)b;
-  (void)c;
+  (void)lhs;
+  (void)rhs;
+  (void)out;
   (void)row_start;
   (void)row_end;
 #endif
 }
 
-void tk_matmul_range_blocked_simd_ikj(const Matrix *a, const Matrix *b, Matrix *c, size_t row_start, size_t row_end,
-                                      size_t block_size) {
+void tk_matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
+                                      size_t row_end, size_t block_size) {
 #if defined(__aarch64__)
-  if (sizeof(mat_elem_t) == sizeof(float)) {
-    for (size_t i0 = row_start; i0 < row_end; i0 += block_size) {
-      size_t i_max = tk_min_size(i0 + block_size, row_end);
+  _Static_assert(sizeof(mat_elem_t) == sizeof(float), "NEON matmul kernel requires float elements");
 
-      for (size_t k0 = 0; k0 < a->cols; k0 += block_size) {
-        size_t k_max = tk_min_size(k0 + block_size, a->cols);
+  for (size_t row0 = row_start; row0 < row_end; row0 += block_size) {
+    size_t row1 = tk_min_size(row0 + block_size, row_end);
 
-        for (size_t j0 = 0; j0 < b->cols; j0 += block_size) {
-          size_t j_max = tk_min_size(j0 + block_size, b->cols);
+    for (size_t inner0 = 0; inner0 < lhs->cols; inner0 += block_size) {
+      size_t inner1 = tk_min_size(inner0 + block_size, lhs->cols);
 
-          for (size_t i = i0; i < i_max; ++i) {
-            for (size_t k = k0; k < k_max; ++k) {
-              float32x4_t aik_vec = vdupq_n_f32(a->data[i * a->cols + k]);
-              size_t j = j0;
+      for (size_t col0 = 0; col0 < rhs->cols; col0 += block_size) {
+        size_t col1 = tk_min_size(col0 + block_size, rhs->cols);
 
-              for (; j + 4 <= j_max; j += 4) {
-                float32x4_t b_vec = vld1q_f32(&b->data[k * b->cols + j]);
-                float32x4_t c_vec = vld1q_f32(&c->data[i * c->cols + j]);
+        for (size_t row = row0; row < row1; ++row) {
+          for (size_t inner = inner0; inner < inner1; ++inner) {
+            float32x4_t lhs_vec = vdupq_n_f32(lhs->data[row * lhs->cols + inner]);
+            size_t col = col0;
 
-                c_vec = vfmaq_f32(c_vec, aik_vec, b_vec);
-                vst1q_f32(&c->data[i * c->cols + j], c_vec);
-              }
+            for (; col + 4 <= col1; col += 4) {
+              float32x4_t rhs_vec = vld1q_f32(&rhs->data[inner * rhs->cols + col]);
+              float32x4_t out_vec = vld1q_f32(&out->data[row * out->cols + col]);
 
-              for (; j < j_max; ++j) {
-                c->data[i * c->cols + j] += a->data[i * a->cols + k] * b->data[k * b->cols + j];
-              }
+              out_vec = vfmaq_f32(out_vec, lhs_vec, rhs_vec);
+              vst1q_f32(&out->data[row * out->cols + col], out_vec);
+            }
+
+            for (; col < col1; ++col) {
+              out->data[row * out->cols + col] +=
+                  lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
             }
           }
         }
       }
     }
-  } else if (sizeof(mat_elem_t) == sizeof(double)) {
   }
 #else
-  (void)a;
-  (void)b;
-  (void)c;
+  (void)lhs;
+  (void)rhs;
+  (void)out;
   (void)row_start;
   (void)row_end;
   (void)block_size;

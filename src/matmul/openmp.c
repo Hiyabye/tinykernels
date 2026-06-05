@@ -6,28 +6,28 @@
 
 #include <stdio.h>
 
-int tk_matmul_openmp_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg) {
+int tk_matmul_openmp_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
 #if TK_ENABLE_OPENMP
-  if (cfg.use_blocking) {
-#pragma omp parallel for num_threads(cfg.num_threads) schedule(static)
-    for (size_t i0 = 0; i0 < a->rows; i0 += cfg.block_size) {
-      size_t row_end = tk_min_size(i0 + cfg.block_size, a->rows);
-      tk_matmul_range(a, b, c, cfg, i0, row_end);
+  if (config.use_blocking) {
+#pragma omp parallel for num_threads(config.num_threads) schedule(static)
+    for (size_t row0 = 0; row0 < lhs->rows; row0 += config.block_size) {
+      size_t row1 = tk_min_size(row0 + config.block_size, lhs->rows);
+      tk_matmul_range(lhs, rhs, out, config, row0, row1);
     }
     return 1;
   }
 
-#pragma omp parallel for num_threads(cfg.num_threads) schedule(static)
-  for (size_t i = 0; i < a->rows; ++i) {
-    tk_matmul_range(a, b, c, cfg, i, i + 1);
+#pragma omp parallel for num_threads(config.num_threads) schedule(static)
+  for (size_t row = 0; row < lhs->rows; ++row) {
+    tk_matmul_range(lhs, rhs, out, config, row, row + 1);
   }
 
   return 1;
 #else
-  (void)a;
-  (void)b;
-  (void)c;
-  (void)cfg;
+  (void)lhs;
+  (void)rhs;
+  (void)out;
+  (void)config;
   fprintf(stderr, "OpenMP support is disabled\n");
   return 0;
 #endif

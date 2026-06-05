@@ -38,11 +38,11 @@ typedef struct {
 MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, int use_simd,
                            size_t num_threads, size_t block_size);
 
-int matmul_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg);
-Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg);
+int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config);
+Matrix matmul(const Matrix *lhs, const Matrix *rhs, MatmulConfig config);
 
 const char *matmul_backend_name(MatmulBackend backend);
 const char *matmul_loop_order_name(MatmulLoopOrder loop_order);
-int matmul_config_label(MatmulConfig cfg, char *buf, size_t buf_size);
+int matmul_config_label(MatmulConfig config, char *label, size_t label_size);
 
 #endif // MATMUL_H

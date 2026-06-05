@@ -17,18 +17,23 @@ MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, in
   };
 }
 
-static int validate_matrices(const Matrix *a, const Matrix *b, const Matrix *c) {
-  if (!a || !b || !c || !a->data || !b->data || !c->data) {
+static int validate_matrices(const Matrix *lhs, const Matrix *rhs, const Matrix *out) {
+  if (!lhs || !rhs || !out || !lhs->data || !rhs->data || !out->data) {
     fprintf(stderr, "invalid matrix\n");
     return 0;
   }
 
-  if (a->cols != b->rows) {
+  if (lhs->rows == 0 || lhs->cols == 0 || rhs->rows == 0 || rhs->cols == 0 || out->rows == 0 || out->cols == 0) {
+    fprintf(stderr, "matrix dimensions must be greater than zero\n");
+    return 0;
+  }
+
+  if (lhs->cols != rhs->rows) {
     fprintf(stderr, "incompatible input matrix dimensions\n");
     return 0;
   }
 
-  if (c->rows != a->rows || c->cols != b->cols) {
+  if (out->rows != lhs->rows || out->cols != rhs->cols) {
     fprintf(stderr, "invalid output matrix dimensions\n");
     return 0;
   }
@@ -36,29 +41,48 @@ static int validate_matrices(const Matrix *a, const Matrix *b, const Matrix *c) 
   return 1;
 }
 
-static int validate_config(MatmulConfig cfg) {
-  if (cfg.backend != MATMUL_BACKEND_SINGLE && cfg.backend != MATMUL_BACKEND_PTHREAD &&
-      cfg.backend != MATMUL_BACKEND_OPENMP) {
+static int validate_input_matrices(const Matrix *lhs, const Matrix *rhs) {
+  if (!lhs || !rhs || !lhs->data || !rhs->data) {
+    fprintf(stderr, "invalid matrix multiplication request\n");
+    return 0;
+  }
+
+  if (lhs->rows == 0 || lhs->cols == 0 || rhs->rows == 0 || rhs->cols == 0) {
+    fprintf(stderr, "matrix dimensions must be greater than zero\n");
+    return 0;
+  }
+
+  if (lhs->cols != rhs->rows) {
+    fprintf(stderr, "incompatible input matrix dimensions\n");
+    return 0;
+  }
+
+  return 1;
+}
+
+static int validate_config(MatmulConfig config) {
+  if (config.backend != MATMUL_BACKEND_SINGLE && config.backend != MATMUL_BACKEND_PTHREAD &&
+      config.backend != MATMUL_BACKEND_OPENMP) {
     fprintf(stderr, "invalid matmul backend\n");
     return 0;
   }
 
-  if (cfg.loop_order != MATMUL_LOOP_IJK && cfg.loop_order != MATMUL_LOOP_IKJ) {
+  if (config.loop_order != MATMUL_LOOP_IJK && config.loop_order != MATMUL_LOOP_IKJ) {
     fprintf(stderr, "invalid matmul loop order\n");
     return 0;
   }
 
-  if (cfg.backend != MATMUL_BACKEND_SINGLE && cfg.num_threads == 0) {
+  if (config.backend != MATMUL_BACKEND_SINGLE && config.num_threads == 0) {
     fprintf(stderr, "num_threads must be greater than zero\n");
     return 0;
   }
 
-  if (cfg.use_blocking && cfg.block_size == 0) {
+  if (config.use_blocking && config.block_size == 0) {
     fprintf(stderr, "block_size must be greater than zero\n");
     return 0;
   }
 
-  if (cfg.use_simd && cfg.loop_order != MATMUL_LOOP_IKJ) {
+  if (config.use_simd && config.loop_order != MATMUL_LOOP_IKJ) {
     fprintf(stderr, "SIMD currently requires IKJ loop order\n");
     return 0;
   }
@@ -66,42 +90,41 @@ static int validate_config(MatmulConfig cfg) {
   return 1;
 }
 
-int matmul_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg) {
-  if (!validate_matrices(a, b, c) || !validate_config(cfg)) {
+int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
+  if (!validate_matrices(lhs, rhs, out) || !validate_config(config)) {
     return 0;
   }
 
-  matrix_fill(c, 0.0);
+  matrix_fill(out, 0.0);
 
-  switch (cfg.backend) {
+  switch (config.backend) {
   case MATMUL_BACKEND_SINGLE:
-    return tk_matmul_single_into(a, b, c, cfg);
+    return tk_matmul_single_into(lhs, rhs, out, config);
   case MATMUL_BACKEND_PTHREAD:
-    return tk_matmul_pthread_into(a, b, c, cfg);
+    return tk_matmul_pthread_into(lhs, rhs, out, config);
   case MATMUL_BACKEND_OPENMP:
-    return tk_matmul_openmp_into(a, b, c, cfg);
+    return tk_matmul_openmp_into(lhs, rhs, out, config);
   default:
     return 0;
   }
 }
 
-Matrix matmul(const Matrix *a, const Matrix *b, MatmulConfig cfg) {
-  if (!a || !b || !a->data || !b->data || a->cols != b->rows) {
-    fprintf(stderr, "invalid matrix multiplication request\n");
+Matrix matmul(const Matrix *lhs, const Matrix *rhs, MatmulConfig config) {
+  if (!validate_input_matrices(lhs, rhs) || !validate_config(config)) {
     return (Matrix){0, 0, NULL};
   }
 
-  Matrix c = matrix_new(a->rows, b->cols);
-  if (!c.data) {
+  Matrix out = matrix_new(lhs->rows, rhs->cols);
+  if (!out.data) {
     return (Matrix){0, 0, NULL};
   }
 
-  if (!matmul_into(a, b, &c, cfg)) {
-    matrix_free(&c);
+  if (!matmul_into(lhs, rhs, &out, config)) {
+    matrix_free(&out);
     return (Matrix){0, 0, NULL};
   }
 
-  return c;
+  return out;
 }
 
 const char *matmul_backend_name(MatmulBackend backend) {
@@ -128,16 +151,16 @@ const char *matmul_loop_order_name(MatmulLoopOrder loop_order) {
   }
 }
 
-int matmul_config_label(MatmulConfig cfg, char *buf, size_t buf_size) {
-  if (!buf || buf_size == 0) {
+int matmul_config_label(MatmulConfig config, char *label, size_t label_size) {
+  if (!label || label_size == 0) {
     return 0;
   }
 
-  const char *backend = matmul_backend_name(cfg.backend);
-  const char *loop = matmul_loop_order_name(cfg.loop_order);
-  const char *blocking = cfg.use_blocking ? "blocked" : "plain";
-  const char *simd = cfg.use_simd ? "simd" : "sisd";
+  const char *backend_name = matmul_backend_name(config.backend);
+  const char *loop_order_name = matmul_loop_order_name(config.loop_order);
+  const char *blocking_name = config.use_blocking ? "blocked" : "plain";
+  const char *simd_name = config.use_simd ? "simd" : "sisd";
 
-  int written = snprintf(buf, buf_size, "%s_%s_%s_%s", backend, blocking, simd, loop);
-  return written >= 0 && (size_t)written < buf_size;
+  int written = snprintf(label, label_size, "%s_%s_%s_%s", backend_name, blocking_name, simd_name, loop_order_name);
+  return written >= 0 && (size_t)written < label_size;
 }

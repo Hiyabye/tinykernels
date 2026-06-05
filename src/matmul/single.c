@@ -1,6 +1,6 @@
 #include "kernels.h"
 
-int tk_matmul_single_into(const Matrix *a, const Matrix *b, Matrix *c, MatmulConfig cfg) {
-  tk_matmul_range(a, b, c, cfg, 0, a->rows);
+int tk_matmul_single_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
+  tk_matmul_range(lhs, rhs, out, config, 0, lhs->rows);
   return 1;
 }

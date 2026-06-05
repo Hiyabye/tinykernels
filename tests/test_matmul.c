@@ -12,19 +12,19 @@
 #define CROSS_MARK "\u2718"
 #define LABEL_SIZE 64
 
-static int matrix_equal(const Matrix *a, const Matrix *b, mat_elem_t eps) {
-  if (!a || !b || !a->data || !b->data) {
+static int matrix_equal(const Matrix *expected, const Matrix *actual, mat_elem_t tolerance) {
+  if (!expected || !actual || !expected->data || !actual->data) {
     return 0;
   }
 
-  if (a->rows != b->rows || a->cols != b->cols) {
+  if (expected->rows != actual->rows || expected->cols != actual->cols) {
     return 0;
   }
 
-  for (size_t i = 0; i < a->rows; ++i) {
-    for (size_t j = 0; j < a->cols; ++j) {
-      mat_elem_t diff = a->data[i * a->cols + j] - b->data[i * b->cols + j];
-      if (diff < -eps || diff > eps) {
+  for (size_t row = 0; row < expected->rows; ++row) {
+    for (size_t col = 0; col < expected->cols; ++col) {
+      mat_elem_t diff = expected->data[row * expected->cols + col] - actual->data[row * actual->cols + col];
+      if (diff < -tolerance || diff > tolerance) {
         return 0;
       }
     }
@@ -33,22 +33,22 @@ static int matrix_equal(const Matrix *a, const Matrix *b, mat_elem_t eps) {
   return 1;
 }
 
-static int check_config(const Matrix *a, const Matrix *b, const Matrix *reference, MatmulConfig cfg) {
+static int check_config(const Matrix *lhs, const Matrix *rhs, const Matrix *reference, MatmulConfig config) {
   char label[LABEL_SIZE];
-  if (!matmul_config_label(cfg, label, sizeof(label))) {
+  if (!matmul_config_label(config, label, sizeof(label))) {
     snprintf(label, sizeof(label), "unknown");
   }
 
-  Matrix c = matmul(a, b, cfg);
-  if (!c.data) {
+  Matrix actual = matmul(lhs, rhs, config);
+  if (!actual.data) {
     fprintf(stderr, "%s%s %s failed to produce output%s\n", COLOR_RED, CROSS_MARK, label, COLOR_RESET);
     return 0;
   }
 
-  int ok = matrix_equal(reference, &c, 1e-6);
-  matrix_free(&c);
+  int matched = matrix_equal(reference, &actual, 1e-6);
+  matrix_free(&actual);
 
-  if (!ok) {
+  if (!matched) {
     fprintf(stderr, "%s%s %s result does not match reference%s\n", COLOR_RED, CROSS_MARK, label, COLOR_RESET);
     return 0;
   }
@@ -59,22 +59,22 @@ static int check_config(const Matrix *a, const Matrix *b, const Matrix *referenc
 static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threads, size_t block_size) {
   printf("\n[test] A=%zux%zu, B=%zux%zu, threads=%zu, block=%zu\n", rows, inner, inner, cols, threads, block_size);
 
-  Matrix a = matrix_new(rows, inner);
-  Matrix b = matrix_new(inner, cols);
-  if (!a.data || !b.data) {
-    matrix_free(&a);
-    matrix_free(&b);
+  Matrix lhs = matrix_new(rows, inner);
+  Matrix rhs = matrix_new(inner, cols);
+  if (!lhs.data || !rhs.data) {
+    matrix_free(&lhs);
+    matrix_free(&rhs);
     return 0;
   }
 
-  matrix_fill_pattern(&a);
-  matrix_fill_pattern(&b);
+  matrix_fill_pattern(&lhs);
+  matrix_fill_pattern(&rhs);
 
-  MatmulConfig reference_cfg = matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1);
-  Matrix reference = matmul(&a, &b, reference_cfg);
+  MatmulConfig ref_config = matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1);
+  Matrix reference = matmul(&lhs, &rhs, ref_config);
   if (!reference.data) {
-    matrix_free(&a);
-    matrix_free(&b);
+    matrix_free(&lhs);
+    matrix_free(&rhs);
     return 0;
   }
 
@@ -102,16 +102,16 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
   };
 
   int all_passed = 1;
-  for (size_t i = 0; i < sizeof(configs) / sizeof(configs[0]); ++i) {
-    all_passed &= check_config(&a, &b, &reference, configs[i]);
+  for (size_t config_idx = 0; config_idx < sizeof(configs) / sizeof(configs[0]); ++config_idx) {
+    all_passed &= check_config(&lhs, &rhs, &reference, configs[config_idx]);
   }
 
   if (all_passed) {
     printf("%s%s all configurations match reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
   }
 
-  matrix_free(&a);
-  matrix_free(&b);
+  matrix_free(&lhs);
+  matrix_free(&rhs);
   matrix_free(&reference);
   return all_passed;
 }
