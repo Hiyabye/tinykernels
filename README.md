@@ -38,7 +38,7 @@ make OPENMP=1
 On macOS with Homebrew LLVM:
 
 ```bash
-make LLVM_PREFIX=/opt/homebrew/opt/llvm OPENMP=1
+make LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6 OPENMP=1
 ```
 
 SIMD kernels are enabled automatically when the target supports ARM NEON or x86 SSE. Unsupported SIMD requests are rejected instead of silently falling back to scalar code.
@@ -86,7 +86,7 @@ scripts/              benchmark plotting
 
 ## Benchmarks
 
-`make bench` writes `benchmarks/data/benchmark_results.csv` and refreshes these plots:
+`make bench` writes `benchmarks/data/benchmark_results.csv`and `benchmarks/plots/`. The following data is from a MacBook Pro 14" 2021 with base specs (Apple M1 Pro, 16GB RAM) running macOS Tahoe 26.5.1.
 
 <img src="benchmarks/plots/matrix_size_sweep.png" width="70%">
 
