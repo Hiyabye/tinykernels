@@ -82,6 +82,11 @@ static int validate_config(MatmulConfig config) {
     return 0;
   }
 
+  if (config.use_simd && !matmul_simd_available()) {
+    fprintf(stderr, "SIMD support is unavailable on this target\n");
+    return 0;
+  }
+
   if (config.use_simd && config.loop_order != MATMUL_LOOP_IKJ) {
     fprintf(stderr, "SIMD currently requires IKJ loop order\n");
     return 0;
@@ -150,6 +155,8 @@ const char *matmul_loop_order_name(MatmulLoopOrder loop_order) {
     return "unknown";
   }
 }
+
+int matmul_simd_available(void) { return sizeof(mat_elem_t) == sizeof(float) && TK_HAVE_SIMD; }
 
 int matmul_config_label(MatmulConfig config, char *label, size_t label_size) {
   if (!label || label_size == 0) {

@@ -7,11 +7,19 @@
 
 static inline size_t tk_min_size(size_t x, size_t y) { return x < y ? x : y; }
 
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(__ARM_NEON)
 #define TK_HAVE_NEON 1
 #else
 #define TK_HAVE_NEON 0
 #endif
+
+#if defined(__SSE__)
+#define TK_HAVE_SSE 1
+#else
+#define TK_HAVE_SSE 0
+#endif
+
+#define TK_HAVE_SIMD (TK_HAVE_NEON || TK_HAVE_SSE)
 
 static inline void tk_matmul_range_ijk(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
                                        size_t row_end) {
@@ -87,7 +95,7 @@ static inline void tk_matmul_range_blocked_ikj(const Matrix *lhs, const Matrix *
   }
 }
 
-// implemented in neon.c
+// implemented in simd.c
 void tk_matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end);
 void tk_matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
                                       size_t row_end, size_t block_size);
@@ -112,7 +120,7 @@ static inline void tk_matmul_range_scalar(const Matrix *lhs, const Matrix *rhs, 
 
 static inline void tk_matmul_range(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config,
                                    size_t row_start, size_t row_end) {
-  if (config.use_simd && TK_HAVE_NEON) {
+  if (config.use_simd && TK_HAVE_SIMD) {
     if (config.use_blocking) {
       tk_matmul_range_blocked_simd_ikj(lhs, rhs, out, row_start, row_end, config.block_size);
     } else {

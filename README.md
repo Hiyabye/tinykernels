@@ -2,7 +2,7 @@
 
 `tinykernels` is a small C project for learning how matrix multiplication kernels work on the CPU.
 
-It includes a naive baseline, loop-order variants, blocking, pthread parallelism, optional OpenMP, correctness tests, CSV benchmarks, and a plotting script.
+It includes a naive baseline, loop-order variants, blocking, SIMD IKJ kernels, pthread parallelism, optional OpenMP, correctness tests, CSV benchmarks, and a plotting script.
 
 ## Build
 
@@ -40,6 +40,8 @@ On macOS with Homebrew LLVM:
 ```bash
 make LLVM_PREFIX=/opt/homebrew/opt/llvm OPENMP=1
 ```
+
+SIMD kernels are enabled automatically when the target supports ARM NEON or x86 SSE. Unsupported SIMD requests are rejected instead of silently falling back to scalar code.
 
 ## CLI
 
@@ -101,5 +103,4 @@ sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block
 ## Roadmap
 
 - Add quick/full benchmark options.
-- Add SIMD experiments.
 - Add CUDA experiments.

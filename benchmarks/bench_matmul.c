@@ -8,6 +8,14 @@
 #include <time.h>
 
 #define LABEL_SIZE 64
+#define CONFIG_CAPACITY 24
+
+static void add_config(MatmulConfig *configs, size_t *count, MatmulConfig config) {
+  if (*count < CONFIG_CAPACITY) {
+    configs[*count] = config;
+    *count += 1;
+  }
+}
 
 static double now_seconds(void) {
   struct timespec now;
@@ -146,21 +154,36 @@ static void bench_matrix_size_sweep(FILE *output) {
 
   for (size_t size_idx = 0; size_idx < sizeof(matrix_sizes) / sizeof(matrix_sizes[0]); ++size_idx) {
     size_t matrix_size = matrix_sizes[size_idx];
-    MatmulConfig configs[] = {
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size),
-#if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-#endif
-    };
+    MatmulConfig configs[CONFIG_CAPACITY];
+    size_t config_count = 0;
 
-    bench_run_case("matrix_size", matrix_size, matrix_size, matrix_size, iterations, configs,
-                   sizeof(configs) / sizeof(configs[0]), output);
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+
+#if TK_ENABLE_OPENMP
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+#endif
+
+    bench_run_case("matrix_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
   }
 }
 
@@ -172,17 +195,32 @@ static void bench_thread_count_sweep(FILE *output) {
 
   for (size_t thread_idx = 0; thread_idx < sizeof(thread_counts) / sizeof(thread_counts[0]); ++thread_idx) {
     size_t thread_count = thread_counts[thread_idx];
-    MatmulConfig configs[] = {
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-#if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-#endif
-    };
+    MatmulConfig configs[CONFIG_CAPACITY];
+    size_t config_count = 0;
 
-    bench_run_case("thread_count", matrix_size, matrix_size, matrix_size, iterations, configs,
-                   sizeof(configs) / sizeof(configs[0]), output);
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+
+#if TK_ENABLE_OPENMP
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+#endif
+
+    bench_run_case("thread_count", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
   }
 }
 
@@ -194,19 +232,35 @@ static void bench_block_size_sweep(FILE *output) {
 
   for (size_t block_idx = 0; block_idx < sizeof(block_sizes) / sizeof(block_sizes[0]); ++block_idx) {
     size_t block_size = block_sizes[block_idx];
-    MatmulConfig configs[] = {
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-        matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block_size),
-        matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size),
-#if TK_ENABLE_OPENMP
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size),
-        matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size),
-#endif
-    };
+    MatmulConfig configs[CONFIG_CAPACITY];
+    size_t config_count = 0;
 
-    bench_run_case("block_size", matrix_size, matrix_size, matrix_size, iterations, configs,
-                   sizeof(configs) / sizeof(configs[0]), output);
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block_size));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size));
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+
+#if TK_ENABLE_OPENMP
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count,
+               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
+
+    if (matmul_simd_available()) {
+      add_config(configs, &config_count,
+                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+    }
+#endif
+
+    bench_run_case("block_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
   }
 }
 
