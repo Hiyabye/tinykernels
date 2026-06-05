@@ -96,9 +96,7 @@ static int validate_config(MatmulConfig config) {
 }
 
 int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
-  if (!validate_matrices(lhs, rhs, out) || !validate_config(config)) {
-    return 0;
-  }
+  if (!validate_matrices(lhs, rhs, out) || !validate_config(config)) return 0;
 
   matrix_fill(out, 0.0);
 
@@ -115,14 +113,10 @@ int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig 
 }
 
 Matrix matmul(const Matrix *lhs, const Matrix *rhs, MatmulConfig config) {
-  if (!validate_input_matrices(lhs, rhs) || !validate_config(config)) {
-    return (Matrix){0, 0, NULL};
-  }
+  if (!validate_input_matrices(lhs, rhs) || !validate_config(config)) return (Matrix){0, 0, NULL};
 
   Matrix out = matrix_new(lhs->rows, rhs->cols);
-  if (!out.data) {
-    return (Matrix){0, 0, NULL};
-  }
+  if (!out.data) return (Matrix){0, 0, NULL};
 
   if (!matmul_into(lhs, rhs, &out, config)) {
     matrix_free(&out);
@@ -159,9 +153,7 @@ const char *matmul_loop_order_name(MatmulLoopOrder loop_order) {
 int matmul_simd_available(void) { return sizeof(mat_elem_t) == sizeof(float) && TK_HAVE_SIMD; }
 
 int matmul_config_label(MatmulConfig config, char *label, size_t label_size) {
-  if (!label || label_size == 0) {
-    return 0;
-  }
+  if (!label || label_size == 0) return 0;
 
   const char *backend_name = matmul_backend_name(config.backend);
   const char *loop_order_name = matmul_loop_order_name(config.loop_order);

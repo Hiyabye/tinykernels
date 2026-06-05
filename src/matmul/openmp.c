@@ -18,9 +18,7 @@ int tk_matmul_openmp_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, Mat
   }
 
 #pragma omp parallel for num_threads(config.num_threads) schedule(static)
-  for (size_t row = 0; row < lhs->rows; ++row) {
-    tk_matmul_range(lhs, rhs, out, config, row, row + 1);
-  }
+  for (size_t row = 0; row < lhs->rows; ++row) tk_matmul_range(lhs, rhs, out, config, row, row + 1);
 
   return 1;
 #else

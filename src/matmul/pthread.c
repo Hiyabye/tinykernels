@@ -22,9 +22,7 @@ static void *pthread_worker(void *worker_arg) {
 
 int tk_matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
   size_t worker_count = config.num_threads;
-  if (worker_count > lhs->rows) {
-    worker_count = lhs->rows;
-  }
+  if (worker_count > lhs->rows) worker_count = lhs->rows;
 
   pthread_t *threads = malloc(sizeof(*threads) * worker_count);
   struct PthreadArgs *worker_args = malloc(sizeof(*worker_args) * worker_count);
@@ -64,9 +62,7 @@ int tk_matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, Ma
 
   int all_threads_joined = 1;
   for (size_t worker_index = 0; worker_index < worker_count; ++worker_index) {
-    if (pthread_join(threads[worker_index], NULL) != 0) {
-      all_threads_joined = 0;
-    }
+    if (pthread_join(threads[worker_index], NULL) != 0) all_threads_joined = 0;
   }
 
   free(threads);

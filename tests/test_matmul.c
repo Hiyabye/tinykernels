@@ -21,20 +21,14 @@ static void add_config(MatmulConfig *configs, size_t *count, MatmulConfig config
 }
 
 static int matrix_equal(const Matrix *expected, const Matrix *actual, mat_elem_t tolerance) {
-  if (!expected || !actual || !expected->data || !actual->data) {
-    return 0;
-  }
+  if (!expected || !actual || !expected->data || !actual->data) return 0;
 
-  if (expected->rows != actual->rows || expected->cols != actual->cols) {
-    return 0;
-  }
+  if (expected->rows != actual->rows || expected->cols != actual->cols) return 0;
 
   for (size_t row = 0; row < expected->rows; ++row) {
     for (size_t col = 0; col < expected->cols; ++col) {
       mat_elem_t diff = expected->data[row * expected->cols + col] - actual->data[row * actual->cols + col];
-      if (diff < -tolerance || diff > tolerance) {
-        return 0;
-      }
+      if (diff < -tolerance || diff > tolerance) return 0;
     }
   }
 
@@ -43,9 +37,7 @@ static int matrix_equal(const Matrix *expected, const Matrix *actual, mat_elem_t
 
 static int check_config(const Matrix *lhs, const Matrix *rhs, const Matrix *reference, MatmulConfig config) {
   char label[LABEL_SIZE];
-  if (!matmul_config_label(config, label, sizeof(label))) {
-    snprintf(label, sizeof(label), "unknown");
-  }
+  if (!matmul_config_label(config, label, sizeof(label))) snprintf(label, sizeof(label), "unknown");
 
   Matrix actual = matmul(lhs, rhs, config);
   if (!actual.data) {
@@ -124,9 +116,7 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
     all_passed &= check_config(&lhs, &rhs, &reference, configs[config_idx]);
   }
 
-  if (all_passed) {
-    printf("%s%s all configurations match reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
-  }
+  if (all_passed) printf("%s%s all configurations match reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
 
   matrix_free(&lhs);
   matrix_free(&rhs);

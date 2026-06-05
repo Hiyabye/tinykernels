@@ -32,9 +32,7 @@ Matrix matrix_new(size_t rows, size_t cols) {
 }
 
 void matrix_free(Matrix *mat) {
-  if (!mat || !mat->data) {
-    return;
-  }
+  if (!mat || !mat->data) return;
 
   free(mat->data);
   mat->data = NULL;
@@ -43,20 +41,14 @@ void matrix_free(Matrix *mat) {
 }
 
 void matrix_fill(Matrix *mat, mat_elem_t value) {
-  if (!mat || !mat->data) {
-    return;
-  }
+  if (!mat || !mat->data) return;
 
   size_t element_count = mat->rows * mat->cols;
-  for (size_t index = 0; index < element_count; ++index) {
-    mat->data[index] = value;
-  }
+  for (size_t index = 0; index < element_count; ++index) mat->data[index] = value;
 }
 
 void matrix_fill_pattern(Matrix *mat) {
-  if (!mat || !mat->data) {
-    return;
-  }
+  if (!mat || !mat->data) return;
 
   for (size_t row = 0; row < mat->rows; ++row) {
     for (size_t col = 0; col < mat->cols; ++col) {
@@ -72,9 +64,7 @@ void matrix_print(const Matrix *mat) {
   }
 
   for (size_t row = 0; row < mat->rows; ++row) {
-    for (size_t col = 0; col < mat->cols; ++col) {
-      printf("%f ", mat->data[row * mat->cols + col]);
-    }
+    for (size_t col = 0; col < mat->cols; ++col) printf("%f ", mat->data[row * mat->cols + col]);
     printf("\n");
   }
 }

@@ -23,9 +23,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (strcmp(mode, "test") == 0) {
-    return run_tests();
-  }
+  if (strcmp(mode, "test") == 0) return run_tests();
 
   if (strcmp(mode, "bench") == 0) {
     bench_run_default_suite("benchmarks/data/benchmark_results.csv");
@@ -33,9 +31,7 @@ int main(int argc, char **argv) {
   }
 
   if (strcmp(mode, "all") == 0) {
-    if (run_tests() != 0) {
-      return 1;
-    }
+    if (run_tests() != 0) return 1;
     bench_run_default_suite("benchmarks/data/benchmark_results.csv");
     return 0;
   }

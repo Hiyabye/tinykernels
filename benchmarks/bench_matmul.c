@@ -27,26 +27,18 @@ static int compare_double(const void *lhs_ptr, const void *rhs_ptr) {
   double lhs = *(const double *)lhs_ptr;
   double rhs = *(const double *)rhs_ptr;
 
-  if (lhs < rhs) {
-    return -1;
-  }
-  if (lhs > rhs) {
-    return 1;
-  }
+  if (lhs < rhs) return -1;
+  if (lhs > rhs) return 1;
   return 0;
 }
 
 static double median(double *values, size_t value_count) {
-  if (!values || value_count == 0) {
-    return -1.0;
-  }
+  if (!values || value_count == 0) return -1.0;
 
   qsort(values, value_count, sizeof(double), compare_double);
 
   size_t mid = value_count / 2;
-  if (value_count % 2 == 1) {
-    return values[mid];
-  }
+  if (value_count % 2 == 1) return values[mid];
   return (values[mid - 1] + values[mid]) / 2.0;
 }
 
@@ -79,9 +71,7 @@ static double bench_config(size_t rows, size_t inner, size_t cols, MatmulConfig 
     int multiplied = matmul_into(&lhs, &rhs, &out, config);
     double end_sec = now_seconds();
 
-    if (!multiplied) {
-      goto cleanup;
-    }
+    if (!multiplied) goto cleanup;
 
     times[iter] = end_sec - start_sec;
   }
@@ -99,9 +89,7 @@ cleanup:
 static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig config,
                          size_t iterations, double time_sec, double baseline_sec) {
   char label[LABEL_SIZE];
-  if (!matmul_config_label(config, label, sizeof(label))) {
-    snprintf(label, sizeof(label), "unknown");
-  }
+  if (!matmul_config_label(config, label, sizeof(label))) snprintf(label, sizeof(label), "unknown");
 
   double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
 
@@ -128,9 +116,7 @@ static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t 
 
   for (size_t config_idx = 0; config_idx < config_count; ++config_idx) {
     char label[LABEL_SIZE];
-    if (!matmul_config_label(configs[config_idx], label, sizeof(label))) {
-      snprintf(label, sizeof(label), "unknown");
-    }
+    if (!matmul_config_label(configs[config_idx], label, sizeof(label))) snprintf(label, sizeof(label), "unknown");
 
     double time_sec = config_idx == 0 ? baseline_sec : bench_config(rows, inner, cols, configs[config_idx], iterations);
     if (time_sec < 0.0) {
