@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 /* Declarations for functions in validate.c */
 extern int validate_matrices(const Matrix *lhs, const Matrix *rhs, const Matrix *out);
 extern int validate_input_matrices(const Matrix *lhs, const Matrix *rhs);
@@ -21,8 +22,6 @@ MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, in
   };
 }
 
-extern int matmul_simd_available(void);
-
 int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
   if (!validate_matrices(lhs, rhs, out) || !validate_config(config)) return 0;
 
@@ -30,11 +29,11 @@ int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig 
 
   switch (config.backend) {
   case MATMUL_BACKEND_SINGLE:
-    return tk_matmul_single_into(lhs, rhs, out, config);
+    return matmul_single_into(lhs, rhs, out, config);
   case MATMUL_BACKEND_PTHREAD:
-    return tk_matmul_pthread_into(lhs, rhs, out, config);
+    return matmul_pthread_into(lhs, rhs, out, config);
   case MATMUL_BACKEND_OPENMP:
-    return tk_matmul_openmp_into(lhs, rhs, out, config);
+    return matmul_openmp_into(lhs, rhs, out, config);
   default:
     return 0;
   }
@@ -78,7 +77,14 @@ const char *matmul_loop_order_name(MatmulLoopOrder loop_order) {
   }
 }
 
-int matmul_simd_available(void) { return sizeof(mat_elem_t) == sizeof(float) && TK_HAVE_SSE; }
+int matmul_simd_available(void) {
+#if defined(__SSE__)
+  return sizeof(mat_elem_t) == sizeof(float);
+#else
+  (void)mat_elem_t;
+  return 0;
+#endif
+}
 
 int matmul_config_label(MatmulConfig config, char *label, size_t label_size) {
   if (!label || label_size == 0) return 0;

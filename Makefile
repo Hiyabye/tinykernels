@@ -7,9 +7,9 @@ OPENMP ?= 0
 ifeq ($(OPENMP),1)
   CFLAGS += -fopenmp
   LDFLAGS += -fopenmp
-  CPPFLAGS += -DTK_ENABLE_OPENMP=1
+  CPPFLAGS += -DENABLE_OPENMP=1
 else
-  CPPFLAGS += -DTK_ENABLE_OPENMP=0
+  CPPFLAGS += -DENABLE_OPENMP=0
 endif
 
 TARGET := tinykernels

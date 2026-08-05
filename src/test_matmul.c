@@ -98,7 +98,7 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
                matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, threads, block_size));
   }
 
-#if TK_ENABLE_OPENMP
+#if ENABLE_OPENMP
   add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, threads, 1));
   add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 0, threads, 1));
   add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, threads, block_size));

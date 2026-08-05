@@ -15,12 +15,12 @@ struct PthreadArgs {
 
 static void *pthread_worker(void *worker_arg) {
   struct PthreadArgs *worker_args = worker_arg;
-  tk_matmul_range(worker_args->lhs, worker_args->rhs, worker_args->out, worker_args->config, worker_args->row_start,
-                  worker_args->row_end);
+  matmul_range(worker_args->lhs, worker_args->rhs, worker_args->out, worker_args->config, worker_args->row_start,
+               worker_args->row_end);
   return NULL;
 }
 
-int tk_matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
+int matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config) {
   size_t worker_count = config.num_threads;
   if (worker_count > lhs->rows) worker_count = lhs->rows;
 

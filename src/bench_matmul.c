@@ -157,7 +157,7 @@ static void bench_matrix_size_sweep(FILE *output) {
                  matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
-#if TK_ENABLE_OPENMP
+#if ENABLE_OPENMP
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
     add_config(configs, &config_count,
                matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
@@ -194,7 +194,7 @@ static void bench_thread_count_sweep(FILE *output) {
                  matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
-#if TK_ENABLE_OPENMP
+#if ENABLE_OPENMP
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
     add_config(configs, &config_count,
                matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
@@ -234,7 +234,7 @@ static void bench_block_size_sweep(FILE *output) {
                  matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
-#if TK_ENABLE_OPENMP
+#if ENABLE_OPENMP
     add_config(configs, &config_count,
                matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
     add_config(configs, &config_count,
