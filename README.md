@@ -29,19 +29,14 @@ make sanitize
 ./tinykernels test
 ```
 
-OpenMP is disabled by default so the project builds with the default macOS compiler. Enable it when your compiler supports OpenMP:
+OpenMP is disabled by default. Enable it when your compiler supports OpenMP:
 
 ```bash
 make OPENMP=1
 ```
 
-On macOS with Homebrew LLVM:
 
-```bash
-make LLVM_PREFIX=/opt/homebrew/Cellar/llvm/22.1.6 OPENMP=1
-```
-
-SIMD kernels are enabled automatically when the target supports ARM NEON or x86 SSE. Unsupported SIMD requests are rejected instead of silently falling back to scalar code.
+SIMD kernels are enabled automatically when the target supports x86 SSE. Unsupported SIMD requests are rejected instead of silently falling back to scalar code.
 
 ## CLI
 

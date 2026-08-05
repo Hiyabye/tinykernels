@@ -1,9 +1,6 @@
-CC ?= cc
-
-CFLAGS ?= -O3 -march=native -Wall -Wextra -Wpedantic -std=c11
+CC ?= gcc
+CFLAGS ?= -O3 -march=native -Wall -Wextra -Wpedantic -std=c99
 CPPFLAGS ?= -Iinclude -Ibenchmarks -Itests
-CPPFLAGS += -D_POSIX_C_SOURCE=200809L
-LDFLAGS ?=
 LDLIBS ?= -pthread
 
 OPENMP ?= 0
@@ -13,12 +10,6 @@ ifeq ($(OPENMP),1)
   CPPFLAGS += -DTK_ENABLE_OPENMP=1
 else
   CPPFLAGS += -DTK_ENABLE_OPENMP=0
-endif
-
-ifneq ($(LLVM_PREFIX),)
-  CC := $(LLVM_PREFIX)/bin/clang
-  CPPFLAGS += -I$(LLVM_PREFIX)/include
-  LDFLAGS += -L$(LLVM_PREFIX)/lib -Wl,-rpath,$(LLVM_PREFIX)/lib
 endif
 
 TARGET := tinykernels
@@ -60,10 +51,10 @@ plots:
 	@mkdir -p $(BENCH_PLOT_DIR) $(MPLCONFIGDIR)
 	MPLCONFIGDIR=$(MPLCONFIGDIR) python3 scripts/plot_benchmarks.py $(BENCH_DATA_DIR)/benchmark_results.csv $(BENCH_PLOT_DIR)
 
-debug: CFLAGS := -O0 -g3 -Wall -Wextra -Wpedantic -std=c11
+debug: CFLAGS := -O0 -g3 -Wall -Wextra -Wpedantic -std=c99
 debug: clean $(TARGET)
 
-sanitize: CFLAGS := -O1 -g3 -Wall -Wextra -Wpedantic -std=c11 -fsanitize=address,undefined
+sanitize: CFLAGS := -O1 -g3 -Wall -Wextra -Wpedantic -std=c99 -fsanitize=address,undefined
 sanitize: LDFLAGS += -fsanitize=address,undefined
 sanitize: clean $(TARGET)
 

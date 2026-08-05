@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define LABEL_SIZE 64
 #define CONFIG_CAPACITY 24
@@ -18,9 +18,9 @@ static void add_config(MatmulConfig *configs, size_t *count, MatmulConfig config
 }
 
 static double now_seconds(void) {
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_sec + now.tv_nsec / 1e9;
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  return now.tv_sec + now.tv_usec / 1e6;
 }
 
 static int compare_double(const void *lhs_ptr, const void *rhs_ptr) {

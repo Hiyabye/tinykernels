@@ -26,20 +26,14 @@ LABEL_ORDER = [
     "single_plain_sisd_ikj",
     "single_blocked_sisd_ijk",
     "single_blocked_sisd_ikj",
-    "single_plain_simd_ikj",
-    "single_blocked_simd_ikj",
     "pthread_plain_sisd_ijk",
     "pthread_plain_sisd_ikj",
     "pthread_blocked_sisd_ijk",
     "pthread_blocked_sisd_ikj",
-    "pthread_plain_simd_ikj",
-    "pthread_blocked_simd_ikj",
     "openmp_plain_sisd_ijk",
     "openmp_plain_sisd_ikj",
     "openmp_blocked_sisd_ijk",
     "openmp_blocked_sisd_ikj",
-    "openmp_plain_simd_ikj",
-    "openmp_blocked_simd_ikj",
 ]
 
 
