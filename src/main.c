@@ -26,13 +26,13 @@ int main(int argc, char **argv) {
   if (strcmp(mode, "test") == 0) return run_tests();
 
   if (strcmp(mode, "bench") == 0) {
-    bench_run_default_suite("benchmarks/data/benchmark_results.csv");
+    bench_run_default_suite("results/data/benchmark_results.csv");
     return 0;
   }
 
   if (strcmp(mode, "all") == 0) {
     if (run_tests() != 0) return 1;
-    bench_run_default_suite("benchmarks/data/benchmark_results.csv");
+    bench_run_default_suite("results/data/benchmark_results.csv");
     return 0;
   }
 

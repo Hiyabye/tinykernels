@@ -251,7 +251,7 @@ static void bench_block_size_sweep(FILE *output) {
 }
 
 void bench_run_default_suite(const char *output_csv) {
-  const char *path = output_csv ? output_csv : "benchmarks/data/benchmark_results.csv";
+  const char *path = output_csv ? output_csv : "results/data/benchmark_results.csv";
   FILE *output = fopen(path, "w");
   if (!output) {
     fprintf(stderr, "failed to open %s for writing\n", path);

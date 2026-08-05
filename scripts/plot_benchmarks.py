@@ -7,7 +7,7 @@ Expected CSV columns:
   num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
 
 Usage:
-  python3 scripts/plot_benchmarks.py benchmarks/data/benchmark_results.csv benchmarks/plots
+  python3 scripts/plot_benchmarks.py results/data/benchmark_results.csv results/plots
 """
 
 from __future__ import annotations

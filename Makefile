@@ -15,10 +15,10 @@ endif
 TARGET := tinykernels
 SRC_DIR := src
 TEST_DIR := tests
-BENCH_DIR := benchmarks
+BENCH_DIR := results
 BUILD_DIR := build
-BENCH_DATA_DIR := benchmarks/data
-BENCH_PLOT_DIR := benchmarks/plots
+BENCH_DATA_DIR := results/data
+BENCH_PLOT_DIR := results/plots
 MPLCONFIGDIR ?= $(BUILD_DIR)/matplotlib
 
 SRCS := $(shell find $(SRC_DIR) -name '*.c' | sort)

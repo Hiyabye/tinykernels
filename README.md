@@ -74,7 +74,7 @@ int ok = matmul_into(&a, &b, &c, cfg);
 ```text
 include/              public headers
 src/matmul/           matmul dispatch and backends
-benchmarks/           benchmark suite, CSV data, and plots
+results/              benchmark data, CSV, and plots
 scripts/              benchmark plotting
 ```
 
@@ -82,11 +82,11 @@ scripts/              benchmark plotting
 
 The following data is from an AMD Ryzen 7 9800X3D with NVIDIA GeForce RTX 5070 Ti, running Arch Linux.
 
-<img src="benchmarks/plots/matrix_size_sweep.png" width="70%">
+<img src="results/plots/matrix_size_sweep.png" width="70%">
 
-<img src="benchmarks/plots/thread_count_sweep.png" width="70%">
+<img src="results/plots/thread_count_sweep.png" width="70%">
 
-<img src="benchmarks/plots/block_size_sweep.png" width="70%">
+<img src="results/plots/block_size_sweep.png" width="70%">
 
 CSV columns:
 
