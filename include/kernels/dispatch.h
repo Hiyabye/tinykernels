@@ -4,8 +4,7 @@
 #include "loop.h"
 #include "simd.h"
 
-static inline void matmul_range_scalar(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config,
-                                       size_t row_start, size_t row_end) {
+static inline void matmul_range_scalar(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config, size_t row_start, size_t row_end) {
   if (config.use_blocking) {
     if (config.loop_order == MATMUL_LOOP_IJK) {
       matmul_range_blocked_ijk(lhs, rhs, out, row_start, row_end, config.block_size);
@@ -22,8 +21,7 @@ static inline void matmul_range_scalar(const Matrix *lhs, const Matrix *rhs, Mat
   }
 }
 
-static inline void matmul_range(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config,
-                                size_t row_start, size_t row_end) {
+static inline void matmul_range(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config, size_t row_start, size_t row_end) {
 #if defined(__SSE__)
   if (config.use_simd) {
     if (config.use_blocking) {

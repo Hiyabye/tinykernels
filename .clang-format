@@ -1,7 +1,7 @@
 ---
 BasedOnStyle: LLVM
 IndentWidth: 2
-ColumnLimit: 120
+ColumnLimit: 150
 TabWidth: 2
 UseTab: Never
 AllowShortLoopsOnASingleLine: true

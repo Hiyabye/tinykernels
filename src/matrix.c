@@ -1,6 +1,5 @@
 #include "matrix.h"
 
-#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,9 +50,7 @@ void matrix_fill_pattern(Matrix *mat) {
   if (!mat || !mat->data) return;
 
   for (size_t row = 0; row < mat->rows; ++row) {
-    for (size_t col = 0; col < mat->cols; ++col) {
-      mat->data[row * mat->cols + col] = (mat_elem_t)((row + col) % 10 + 1);
-    }
+    for (size_t col = 0; col < mat->cols; ++col) { mat->data[row * mat->cols + col] = (mat_elem_t)((row + col) % 10 + 1); }
   }
 }
 
@@ -64,7 +61,7 @@ void matrix_print(const Matrix *mat) {
   }
 
   for (size_t row = 0; row < mat->rows; ++row) {
-    for (size_t col = 0; col < mat->cols; ++col) printf("%f ", mat->data[row * mat->cols + col]);
-    printf("\n");
+    for (size_t col = 0; col < mat->cols; ++col) fprintf(stderr, "%f ", mat->data[row * mat->cols + col]);
+    fputc('\n', stderr);
   }
 }

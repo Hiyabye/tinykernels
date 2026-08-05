@@ -94,8 +94,7 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1));
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size));
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 1, threads, 1));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, threads, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, threads, block_size));
   }
 
 #if ENABLE_OPENMP
@@ -106,15 +105,12 @@ static int test_matmul_case(size_t rows, size_t inner, size_t cols, size_t threa
 
   if (matmul_simd_available()) {
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 1, threads, 1));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, threads, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, threads, block_size));
   }
 #endif
 
   int all_passed = 1;
-  for (size_t config_idx = 0; config_idx < config_count; ++config_idx) {
-    all_passed &= check_config(&lhs, &rhs, &reference, configs[config_idx]);
-  }
+  for (size_t config_idx = 0; config_idx < config_count; ++config_idx) { all_passed &= check_config(&lhs, &rhs, &reference, configs[config_idx]); }
 
   if (all_passed) printf("%s%s all configurations match reference%s\n", COLOR_GREEN, CHECK_MARK, COLOR_RESET);
 
@@ -144,9 +140,7 @@ static int test_invalid_configs(void) {
   passed &= !matmul_into(&lhs, &rhs, &out, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, 0));
   passed &= !matmul_into(&lhs, &rhs, &out, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 1, 1, 1));
 
-  if (!matmul_simd_available()) {
-    passed &= !matmul_into(&lhs, &rhs, &out, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1));
-  }
+  if (!matmul_simd_available()) { passed &= !matmul_into(&lhs, &rhs, &out, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1)); }
 
   matrix_free(&lhs);
   matrix_free(&rhs);

@@ -23,9 +23,7 @@ void matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, si
         _mm_storeu_ps(&out->data[row * out->cols + col], out_vec);
       }
 
-      for (; col < rhs->cols; ++col) {
-        out->data[row * out->cols + col] += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
-      }
+      for (; col < rhs->cols; ++col) { out->data[row * out->cols + col] += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col]; }
     }
   }
 #else
@@ -37,8 +35,7 @@ void matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, si
 #endif
 }
 
-void matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
-                                   size_t row_end, size_t block_size) {
+void matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end, size_t block_size) {
 #if defined(__SSE__)
 
   for (size_t row0 = row_start; row0 < row_end; row0 += block_size) {
@@ -63,10 +60,7 @@ void matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix 
               _mm_storeu_ps(&out->data[row * out->cols + col], out_vec);
             }
 
-            for (; col < col1; ++col) {
-              out->data[row * out->cols + col] +=
-                  lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col];
-            }
+            for (; col < col1; ++col) { out->data[row * out->cols + col] += lhs->data[row * lhs->cols + inner] * rhs->data[inner * rhs->cols + col]; }
           }
         }
       }

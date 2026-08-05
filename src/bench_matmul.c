@@ -86,27 +86,27 @@ cleanup:
   return result;
 }
 
-static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig config,
-                         size_t iterations, double time_sec, double baseline_sec) {
+static void write_result(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, MatmulConfig config, size_t iterations,
+                         double time_sec, double baseline_sec) {
   char label[LABEL_SIZE];
   if (!matmul_config_label(config, label, sizeof(label))) snprintf(label, sizeof(label), "unknown");
 
   double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
 
-  fprintf(output, "%s,%zu,%zu,%zu,%s,%s,%d,%d,%zu,%zu,%zu,%f,%f,%s\n", sweep, rows, inner, cols,
-          matmul_backend_name(config.backend), matmul_loop_order_name(config.loop_order), config.use_blocking,
-          config.use_simd, config.num_threads, config.block_size, iterations, time_sec, speedup, label);
+  fprintf(output, "%s,%zu,%zu,%zu,%s,%s,%d,%d,%zu,%zu,%zu,%f,%f,%s\n", sweep, rows, inner, cols, matmul_backend_name(config.backend),
+          matmul_loop_order_name(config.loop_order), config.use_blocking, config.use_simd, config.num_threads, config.block_size, iterations,
+          time_sec, speedup, label);
 }
 
-static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t cols, size_t iterations,
-                           const MatmulConfig *configs, size_t config_count, FILE *output) {
+static void bench_run_case(FILE *output, const char *sweep, size_t rows, size_t inner, size_t cols, size_t iterations, const MatmulConfig *configs,
+                           size_t config_count) {
   if (iterations == 0 || !configs || config_count == 0 || !output) {
     fprintf(stderr, "invalid benchmark case\n");
     return;
   }
 
-  printf("\n[benchmark] %s: A=%zux%zu, B=%zux%zu, iterations=%zu\n", sweep, rows, inner, inner, cols, iterations);
-  printf("-----------------------------------------------------\n");
+  fprintf(output, "\n[benchmark] %s: A=%zux%zu, B=%zux%zu, iterations=%zu\n", sweep, rows, inner, inner, cols, iterations);
+  fprintf(output, "-----------------------------------------------------\n");
 
   double baseline_sec = bench_config(rows, inner, cols, configs[0], iterations);
   if (baseline_sec < 0.0) {
@@ -125,7 +125,7 @@ static void bench_run_case(const char *sweep, size_t rows, size_t inner, size_t 
     }
 
     double speedup = time_sec > 0.0 ? baseline_sec / time_sec : 0.0;
-    printf("%-30s: %.6f sec (%.2fx)\n", label, time_sec, speedup);
+    fprintf(output, "%-30s: %.6f sec (%.2fx)\n", label, time_sec, speedup);
     write_result(output, sweep, rows, inner, cols, configs[config_idx], iterations, time_sec, baseline_sec);
   }
 
@@ -146,30 +146,26 @@ static void bench_matrix_size_sweep(FILE *output) {
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 0, 0, 1, 1));
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 0, 1, 1, 1));
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size));
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
 #if ENABLE_OPENMP
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 #endif
 
-    bench_run_case("matrix_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
+    bench_run_case(output, "matrix_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count);
   }
 }
 
@@ -185,28 +181,24 @@ static void bench_thread_count_sweep(FILE *output) {
     size_t config_count = 0;
 
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
 #if ENABLE_OPENMP
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 0, 0, thread_count, 1));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 0, 1, thread_count, 1));
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 #endif
 
-    bench_run_case("thread_count", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
+    bench_run_case(output, "thread_count", matrix_size, matrix_size, matrix_size, iterations, configs, config_count);
   }
 }
 
@@ -222,27 +214,21 @@ static void bench_block_size_sweep(FILE *output) {
     size_t config_count = 0;
 
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IJK, 1, 0, 1, block_size));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
     add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 0, 1, block_size));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
       add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_SINGLE, MATMUL_LOOP_IKJ, 1, 1, 1, block_size));
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_PTHREAD, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 
 #if ENABLE_OPENMP
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
-    add_config(configs, &config_count,
-               matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IJK, 1, 0, thread_count, block_size));
+    add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 0, thread_count, block_size));
 
     if (matmul_simd_available()) {
-      add_config(configs, &config_count,
-                 matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
+      add_config(configs, &config_count, matmul_config(MATMUL_BACKEND_OPENMP, MATMUL_LOOP_IKJ, 1, 1, thread_count, block_size));
     }
 #endif
 
@@ -254,13 +240,12 @@ void bench_run_default_suite(const char *output_csv) {
   const char *path = output_csv ? output_csv : "results/data/benchmark_results.csv";
   FILE *output = fopen(path, "w");
   if (!output) {
-    fprintf(stderr, "failed to open %s for writing\n", path);
+    perror("fopen");
     return;
   }
 
-  fprintf(output,
-          "sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,"
-          "speedup_vs_baseline,label\n");
+  fprintf(output, "sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,"
+                  "speedup_vs_baseline,label\n");
 
   bench_matrix_size_sweep(output);
   bench_thread_count_sweep(output);

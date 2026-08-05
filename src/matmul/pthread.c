@@ -15,8 +15,7 @@ struct PthreadArgs {
 
 static void *pthread_worker(void *worker_arg) {
   struct PthreadArgs *worker_args = worker_arg;
-  matmul_range(worker_args->lhs, worker_args->rhs, worker_args->out, worker_args->config, worker_args->row_start,
-               worker_args->row_end);
+  matmul_range(worker_args->lhs, worker_args->rhs, worker_args->out, worker_args->config, worker_args->row_start, worker_args->row_end);
   return NULL;
 }
 
@@ -50,10 +49,8 @@ int matmul_pthread_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, Matmu
 
     int create_error = pthread_create(&threads[worker_index], NULL, pthread_worker, &worker_args[worker_index]);
     if (create_error != 0) {
-      fprintf(stderr, "pthread_create failed\n");
-      for (size_t joined_index = 0; joined_index < worker_index; ++joined_index) {
-        pthread_join(threads[joined_index], NULL);
-      }
+      perror("pthread_create");
+      for (size_t joined_index = 0; joined_index < worker_index; ++joined_index) { pthread_join(threads[joined_index], NULL); }
       free(threads);
       free(worker_args);
       return 0;

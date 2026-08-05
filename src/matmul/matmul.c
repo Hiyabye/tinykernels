@@ -1,17 +1,12 @@
 #include "matmul.h"
-#include "matrix.h"
 #include "kernels.h"
+#include "matrix.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Declarations for functions in validate.c */
-extern int validate_matrices(const Matrix *lhs, const Matrix *rhs, const Matrix *out);
-extern int validate_input_matrices(const Matrix *lhs, const Matrix *rhs);
-extern int validate_config(MatmulConfig config);
-
-MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, int use_simd,
-                           size_t num_threads, size_t block_size) {
+MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, bool use_blocking, bool use_simd, size_t num_threads,
+                           size_t block_size) {
   return (MatmulConfig){
       .backend = backend,
       .loop_order = loop_order,
@@ -81,7 +76,6 @@ int matmul_simd_available(void) {
 #if defined(__SSE__)
   return sizeof(mat_elem_t) == sizeof(float);
 #else
-  (void)mat_elem_t;
   return 0;
 #endif
 }

@@ -3,6 +3,7 @@
 
 #include "matrix.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef enum {
@@ -19,14 +20,14 @@ typedef enum {
 typedef struct {
   MatmulBackend backend;
   MatmulLoopOrder loop_order;
-  int use_blocking;
-  int use_simd;
+  bool use_blocking;
+  bool use_simd;
   size_t num_threads;
   size_t block_size;
 } MatmulConfig;
 
-MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, int use_blocking, int use_simd,
-                           size_t num_threads, size_t block_size);
+MatmulConfig matmul_config(MatmulBackend backend, MatmulLoopOrder loop_order, bool use_blocking, bool use_simd, size_t num_threads,
+                           size_t block_size);
 
 int matmul_into(const Matrix *lhs, const Matrix *rhs, Matrix *out, MatmulConfig config);
 Matrix matmul(const Matrix *lhs, const Matrix *rhs, MatmulConfig config);

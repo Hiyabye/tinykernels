@@ -47,8 +47,7 @@ int validate_input_matrices(const Matrix *lhs, const Matrix *rhs) {
 }
 
 int validate_config(MatmulConfig config) {
-  if (config.backend != MATMUL_BACKEND_SINGLE && config.backend != MATMUL_BACKEND_PTHREAD &&
-      config.backend != MATMUL_BACKEND_OPENMP) {
+  if (config.backend != MATMUL_BACKEND_SINGLE && config.backend != MATMUL_BACKEND_PTHREAD && config.backend != MATMUL_BACKEND_OPENMP) {
     fprintf(stderr, "invalid matmul backend\n");
     return 0;
   }
