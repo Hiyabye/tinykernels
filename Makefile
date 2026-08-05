@@ -1,6 +1,6 @@
 CC ?= gcc
 CFLAGS ?= -O3 -march=native -Wall -Wextra -Wpedantic -std=c99
-CPPFLAGS ?= -Iinclude -Ibenchmarks -Itests
+CPPFLAGS ?= -Iinclude
 LDLIBS ?= -pthread
 
 OPENMP ?= 0
@@ -21,7 +21,7 @@ BENCH_DATA_DIR := benchmarks/data
 BENCH_PLOT_DIR := benchmarks/plots
 MPLCONFIGDIR ?= $(BUILD_DIR)/matplotlib
 
-SRCS := $(shell find $(SRC_DIR) $(TEST_DIR) $(BENCH_DIR) -name '*.c' | sort)
+SRCS := $(shell find $(SRC_DIR) -name '*.c' | sort)
 OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS := $(OBJS:.o=.d)
 
