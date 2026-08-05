@@ -74,14 +74,13 @@ int ok = matmul_into(&a, &b, &c, cfg);
 ```text
 include/              public headers
 src/matmul/           matmul dispatch and backends
-tests/                correctness tests
 benchmarks/           benchmark suite, CSV data, and plots
 scripts/              benchmark plotting
 ```
 
 ## Benchmarks
 
-`make bench` writes `benchmarks/data/benchmark_results.csv`and `benchmarks/plots/`. The following data is from a MacBook Pro 14" 2021 with base specs (Apple M1 Pro, 16GB RAM) running macOS Tahoe 26.5.1.
+The following data is from an AMD Ryzen 7 9800X3D with NVIDIA GeForce RTX 5070 Ti, running Arch Linux.
 
 <img src="benchmarks/plots/matrix_size_sweep.png" width="70%">
 
@@ -94,8 +93,3 @@ CSV columns:
 ```text
 sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
 ```
-
-## Roadmap
-
-- Add quick/full benchmark options.
-- Add CUDA experiments.
