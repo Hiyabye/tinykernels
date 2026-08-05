@@ -150,7 +150,7 @@ const char *matmul_loop_order_name(MatmulLoopOrder loop_order) {
   }
 }
 
-int matmul_simd_available(void) { return sizeof(mat_elem_t) == sizeof(float) && TK_HAVE_SIMD; }
+int matmul_simd_available(void) { return sizeof(mat_elem_t) == sizeof(float) && TK_HAVE_SSE; }
 
 int matmul_config_label(MatmulConfig config, char *label, size_t label_size) {
   if (!label || label_size == 0) return 0;

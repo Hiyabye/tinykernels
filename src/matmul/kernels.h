@@ -7,19 +7,13 @@
 
 static inline size_t tk_min_size(size_t x, size_t y) { return x < y ? x : y; }
 
-#if defined(__aarch64__) || defined(__ARM_NEON)
-#define TK_HAVE_NEON 1
-#else
-#define TK_HAVE_NEON 0
-#endif
+#define TK_HAVE_SIMD TK_HAVE_SSE
 
 #if defined(__SSE__)
 #define TK_HAVE_SSE 1
 #else
 #define TK_HAVE_SSE 0
 #endif
-
-#define TK_HAVE_SIMD (TK_HAVE_NEON || TK_HAVE_SSE)
 
 static inline void tk_matmul_range_ijk(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start,
                                        size_t row_end) {
