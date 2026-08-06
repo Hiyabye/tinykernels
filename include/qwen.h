@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+struct GGUFContext;
+
 typedef struct {
   size_t hidden_size;
   size_t num_layers;
@@ -21,6 +23,7 @@ typedef struct {
 } QwenConfig;
 
 QwenConfig qwen_config_qwen3_0_6b(void);
+QwenConfig qwen_config_from_gguf(const struct GGUFContext *gguf);
 size_t qwen_config_param_count(const QwenConfig *config);
 void qwen_config_print(const QwenConfig *config);
 

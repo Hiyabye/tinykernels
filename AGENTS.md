@@ -88,7 +88,9 @@ Enable OpenMP: `OPENMP=1 make clean && make`
 |`include/kernels/loop.h`|`static inline` loop kernels: ijk, ikj, blocked variants|
 |`include/kernels/backends.h`|Backend declarations + validation function declarations|
 |`src/matmul/simd.c`|SSE IKJ kernels (`__m128` vectorized)|
-|`src/bench_matmul.c`|Benchmark harness, sweep generators, CSV writer|
+|`include/gguf.h`, `src/llm/gguf.c`|GGUF v3 reader: header + metadata KV + tensor info, on-demand F32/Q8_0 dequant; shared by the tokenizer and weight loading|
+|`include/qwen.h`, `src/llm/qwen.c`|`QwenConfig` (hardcoded + GGUF-derived) and config helpers|
+|`src/llm/qwen_tokenizer.c`|Byte-level BPE tokenizer/detokenizer (vocab from GGUF via `gguf.h`)|
 |`src/test_matmul.c`|Correctness tests vs reference output (1e-6 tolerance)|
 |`scripts/plot_benchmarks.py`|matplotlib plots: matrix size sweep, thread count sweep, block size sweep|
 |`Makefile`|Build system, flags, sanitizers, OpenMP toggle|

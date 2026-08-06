@@ -1,4 +1,5 @@
 #include "qwen_tokenizer.h"
+#include "gguf.h"
 #include "unicode_ranges.h"
 
 #include <stdbool.h>
@@ -6,160 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* =========================================================================
- * GGUF metadata reading (tokenizer section only)
- *
- * Reads only the header + the metadata KV entries needed for the tokenizer.
- * A full GGUF loader (header + tensor infos + weights) arrives in Phase 3 and
- * will absorb or replace this.
- * ========================================================================= */
-
-typedef struct {
-  char **tokens; /* vocab strings, in byte->unicode "mapped" space  */
-  size_t ntokens;
-  uint32_t *token_types; /* per-token GGUF type                             */
-  bool add_bos_token;
-  uint32_t bos_token_id;
-} TZParsed;
-
-static uint32_t le_u32(const uint8_t *p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
-static uint64_t le_u64(const uint8_t *p) {
-  uint64_t x = 0;
-  for (int i = 0; i < 8; i++) x |= ((uint64_t)p[i]) << (8 * i);
-  return x;
-}
-
-/* Reads a length-prefixed GGUF string (null-terminated) or NULL on EOF. */
-static char *read_str(FILE *fp) {
-  uint8_t lb[8];
-  if (fread(lb, 1, 8, fp) != 8) return NULL;
-  uint64_t n = le_u64(lb);
-  char *s = malloc(n + 1);
-  if (!s) return NULL;
-  if (fread(s, 1, n, fp) != n) {
-    free(s);
-    return NULL;
-  }
-  s[n] = '\0';
-  return s;
-}
-
-static bool tz_parse(const char *path, TZParsed *out) {
-  memset(out, 0, sizeof(*out));
-  FILE *fp = fopen(path, "rb");
-  if (!fp) return false;
-
-  uint8_t hdr[24];
-  if (fread(hdr, 1, 24, fp) != 24 || memcmp(hdr, "GGUF", 4) != 0) {
-    fclose(fp);
-    return false;
-  }
-  uint64_t kv_count = le_u64(hdr + 16);
-
-  for (uint64_t k = 0; k < kv_count; k++) {
-    char *key = read_str(fp);
-    if (!key) {
-      fclose(fp);
-      return false;
-    }
-    uint8_t vtb[4];
-    bool ok = true;
-    if (fread(vtb, 1, 4, fp) != 4) ok = false;
-    uint32_t vt = ok ? le_u32(vtb) : 0;
-
-    if (ok && vt == 9) { /* array */
-      uint8_t arr[12];
-      if (fread(arr, 1, 12, fp) != 12) ok = false;
-      uint32_t et = ok ? le_u32(arr) : 0;
-      uint64_t cnt = ok ? le_u64(arr + 4) : 0;
-      if (ok && strcmp(key, "tokenizer.ggml.tokens") == 0) {
-        out->ntokens = (size_t)cnt;
-        out->tokens = malloc((size_t)cnt * sizeof(char *));
-        if (!out->tokens) ok = false;
-        for (uint64_t c = 0; ok && c < cnt; c++) {
-          out->tokens[c] = read_str(fp);
-          if (!out->tokens[c]) ok = false;
-        }
-      } else if (ok && strcmp(key, "tokenizer.ggml.token_type") == 0) {
-        out->token_types = malloc((size_t)cnt * sizeof(uint32_t));
-        if (!out->token_types || fread(out->token_types, 4, (size_t)cnt, fp) != (size_t)cnt) ok = false;
-      } else if (ok && et == 8) { /* string array to skip */
-        for (uint64_t c = 0; c < cnt; c++) {
-          char *s = read_str(fp);
-          if (!s) {
-            ok = false;
-            break;
-          }
-          free(s);
-        }
-      } else { /* unknown array, skip raw */
-        uint8_t esz = (et == 0 || et == 1 || et == 7)      ? 1
-                      : (et == 2 || et == 3)               ? 2
-                      : (et >= 4 && et <= 6)               ? 4
-                      : (et == 10 || et == 11 || et == 12) ? 8
-                                                           : 0;
-        if (fseek(fp, (long)(cnt * esz), SEEK_CUR) != 0) ok = false;
-      }
-    } else if (ok) { /* scalar */
-      switch (vt) {
-      case 4: { /* u32 */
-        if (strcmp(key, "tokenizer.ggml.bos_token_id") == 0) {
-          uint8_t b[4];
-          if (fread(b, 1, 4, fp) != 4) ok = false;
-          else out->bos_token_id = le_u32(b);
-        } else if (fseek(fp, 4, SEEK_CUR) != 0) ok = false;
-        break;
-      }
-      case 7: { /* bool */
-        if (strcmp(key, "tokenizer.ggml.add_bos_token") == 0) {
-          uint8_t b;
-          if (fread(&b, 1, 1, fp) != 1) ok = false;
-          else out->add_bos_token = b != 0;
-        } else if (fseek(fp, 1, SEEK_CUR) != 0) ok = false;
-        break;
-      }
-      case 8: {
-        char *s = read_str(fp);
-        if (!s) ok = false;
-        else free(s);
-        break;
-      }
-      case 0:
-      case 1: {
-        ok = fseek(fp, 1, SEEK_CUR) == 0;
-        break;
-      }
-      case 2:
-      case 3: {
-        ok = fseek(fp, 2, SEEK_CUR) == 0;
-        break;
-      }
-      case 5:
-      case 6: {
-        ok = fseek(fp, 4, SEEK_CUR) == 0;
-        break;
-      }
-      case 10:
-      case 11:
-      case 12: {
-        ok = fseek(fp, 8, SEEK_CUR) == 0;
-        break;
-      }
-      default:
-        ok = false;
-      }
-    }
-
-    free(key);
-    if (!ok) {
-      fclose(fp);
-      return false;
-    }
-  }
-  fclose(fp);
-  return true;
-}
 
 /* =========================================================================
  * Byte-level BPE helpers
@@ -503,35 +350,53 @@ static uint32_t find_special(const QwenTokenizer *tz, const uint8_t *bytes, size
  * ========================================================================= */
 
 QwenTokenizer *qwen_tokenizer_load(const char *path) {
-  TZParsed p;
-  if (!tz_parse(path, &p)) return NULL;
+  GGUFContext *ctx = gguf_open(path);
+  if (!ctx) return NULL;
+
+  size_t ntok;
+  char **tokens = NULL;
+  if ((ntok = gguf_get_string_array(ctx, "tokenizer.ggml.tokens", &tokens)) == 0) {
+    gguf_close(ctx);
+    return NULL;
+  }
+
+  /* token_type is optional (defaults to NORMAL). It comes back as int32(). */
+  int32_t *token_types = NULL;
+  if (gguf_get_i32_array(ctx, "tokenizer.ggml.token_type", &token_types) != ntok) {
+    free(token_types);
+    token_types = NULL;
+  }
 
   QwenTokenizer *tz = calloc(1, sizeof(*tz));
-  tz->vocab_size = p.ntokens;
-  tz->tokens = p.tokens;
-  tz->add_bos_token = p.add_bos_token;
-  tz->bos_token_id = p.bos_token_id;
-  tz->special = calloc(p.ntokens, 1);
+  tz->vocab_size = ntok;
+  tz->tokens = tokens;
+  tz->add_bos_token = gguf_get_bool(ctx, "tokenizer.ggml.add_bos_token", false);
+  tz->bos_token_id = (uint32_t)gguf_get_int(ctx, "tokenizer.ggml.bos_token_id", 0);
+  tz->special = calloc(ntok, 1);
 
-  /* Special = CONTROL(3) or USER_DEFINED(4). UNUSED(5) pad tokens are not matched. */
+  /* Non-mergeable = everything that isn't NORMAL(1) or BYTE(6). Matched verbatim
+   * (longest match) and never BPE-merged. UNUSED(5) pad tokens don't occur in real
+   * input, so marking them special is harmless. */
   size_t ns = 0;
-  for (size_t id = 0; id < p.ntokens; id++)
-    if (p.token_types[id] != 1 && p.token_types[id] != 6) {
+  for (size_t id = 0; id < ntok; id++) {
+    int32_t tt = token_types ? token_types[id] : 1;
+    if (tt != 1 && tt != 6) {
       tz->special[id] = 1;
       ns++;
     }
+  }
   tz->num_special = ns;
   tz->special_ids = malloc(ns * sizeof(uint32_t));
-  for (size_t id = 0, s = 0; id < p.ntokens; id++)
+  for (size_t id = 0, s = 0; id < ntok; id++)
     if (tz->special[id]) tz->special_ids[s++] = (uint32_t)id;
 
   /* String->id map over keepable tokens (byte tokens + merges). */
-  size_t keepable = p.ntokens - ns;
+  size_t keepable = ntok - ns;
   size_t cap = 1;
   while (cap < keepable * 2) cap <<= 1;
   tz->map_cap = cap;
   tz->map = calloc(cap, sizeof(Entry));
-  for (size_t id = 0; id < p.ntokens; id++)
+  for (size_t id = 0; id < ntok; id++)
     if (!tz->special[id]) smap_put(tz->map, cap, tz->tokens[id], id);
 
   /* byte <-> unicode tables (GPT-2 bytes_to_unicode). */
@@ -541,13 +406,14 @@ QwenTokenizer *qwen_tokenizer_load(const char *path) {
   for (int b = 0xAE; b <= 0xFF; b++) kept[b] = 1;
   for (int b = 0, n = 0; b < 256; b++) tz->byte_cp[b] = kept[b] ? (uint32_t)b : 256u + n++;
   for (int b = 0; b < 256; b++) tz->uni_to_byte[tz->byte_cp[b]] = (uint32_t)b;
-  for (size_t id = 0; id < 256 && id < p.ntokens; id++) {
+  for (size_t id = 0; id < 256 && id < ntok; id++) {
     size_t cl;
     uint32_t cp = utf8_cp(tz->tokens[id], &cl);
     tz->byte_to_id[tz->uni_to_byte[cp]] = (uint16_t)id;
   }
 
-  free(p.token_types);
+  free(token_types);
+  gguf_close(ctx);
   return tz;
 }
 
@@ -595,6 +461,7 @@ size_t qwen_tokenize(const QwenTokenizer *tz, const char *text, uint32_t **out_i
 char *qwen_detokenize(const QwenTokenizer *tz, const uint32_t *ids, size_t n) {
   size_t total = 0;
   for (size_t k = 0; k < n; k++) {
+    if (ids[k] >= tz->vocab_size) continue; /* skip invalid ids */
     const char *t = tz->tokens[ids[k]];
     if (tz->special[ids[k]]) {
       total += strlen(t);
@@ -615,6 +482,7 @@ char *qwen_detokenize(const QwenTokenizer *tz, const uint32_t *ids, size_t n) {
   char *out = malloc(total + 1);
   size_t o = 0;
   for (size_t k = 0; k < n; k++) {
+    if (ids[k] >= tz->vocab_size) continue;
     const char *t = tz->tokens[ids[k]];
     if (tz->special[ids[k]]) {
       for (const char *p = t; *p; p++) out[o++] = *p;
