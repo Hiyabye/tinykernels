@@ -48,6 +48,7 @@ SIMD kernels are enabled automatically when the target supports x86 SSE. Unsuppo
 ./tinykernels tokenize "text"    # byte-level BPE -> token ids
 ./tinykernels detokenize 9707 11 # token ids -> text
 ./tinykernels forward "prompt"   # full Qwen3 forward pass -> greedy next-token ids + logits
+./tinykernels generate "prompt"  # autoregressive generation (sampling + KV cache)
 ```
 
 Running `./tinykernels` with no arguments defaults to `test`.
@@ -58,6 +59,11 @@ kernels, writes full per-token logits to `results/data/forward_logits.bin`, and
 prints the greedy next-token id per position. Its logits are cross-checked
 against an independent numpy reference and llama.cpp via
 `scripts/verify_forward.py`.
+
+`generate` runs the same pass incrementally with a per-layer KV cache and an
+autoregressive loop, applying temperature/top-k/top-p sampling plus the Qwen3
+chat template (with `--think` to start a reasoning block). Sampling is
+deterministic for a fixed `--seed`.
 
 ## API
 

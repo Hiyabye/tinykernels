@@ -459,6 +459,12 @@ size_t tk_tokenize(const TkTokenizer *tz, const char *text, uint32_t **out_ids) 
   return out.n;
 }
 
+uint32_t tk_token_id(const TkTokenizer *tz, const char *s) {
+  for (size_t id = 0; id < tz->vocab_size; id++)
+    if (strcmp(tz->tokens[id], s) == 0) return (uint32_t)id;
+  return UINT32_MAX;
+}
+
 char *tk_detokenize(const TkTokenizer *tz, const uint32_t *ids, size_t n) {
   size_t total = 0;
   for (size_t k = 0; k < n; k++) {

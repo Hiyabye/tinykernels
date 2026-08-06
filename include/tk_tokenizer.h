@@ -21,4 +21,9 @@ size_t tk_tokenize(const TkTokenizer *tz, const char *text, uint32_t **ids);
  * ids (>= vocab_size) are skipped. */
 char *tk_detokenize(const TkTokenizer *tz, const uint32_t *ids, size_t n);
 
+/* Vocab index of the exact token string `s`, or UINT32_MAX if it is not a single
+ * vocab token (e.g. added special/control tokens like " thinking"). Returns the
+ * id even when BPE would not emit it, so callers can insert it verbatim. */
+uint32_t tk_token_id(const TkTokenizer *tz, const char *s);
+
 #endif /* TK_TOKENIZER_H */

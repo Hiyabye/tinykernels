@@ -1,5 +1,6 @@
 #include "tk_bench.h"
 #include "tk_forward.h"
+#include "tk_generate.h"
 #include "tk_gguf.h"
 #include "tk_model.h"
 #include "tk_test.h"
@@ -13,7 +14,8 @@
 #define QWEN_DEFAULT_GGUF "Qwen3-0.6B-Q8_0.gguf"
 
 static void print_usage(const char *program) {
-  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>]\n", program);
+  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>|generate <text> [options]]\n", program);
+  fprintf(stderr, "generate options: --seed N --temp T --top-k K --top-p P --n NT --think\n");
 }
 
 static int run_tokenizer_cmd(int argc, char **argv) {
@@ -203,6 +205,112 @@ out:
   return s != TK_OK;
 }
 
+static int run_generate_cmd(int argc, char **argv) {
+  const char *text = NULL;
+  int think = 0;
+  uint64_t seed = 42;
+  float temp = 0.7f;
+  int top_k = 20;
+  float top_p = 0.8f;
+  size_t max_new = 128;
+
+  for (int i = 2; i < argc; i++) {
+    if (argv[i][0] != '-' && !text) {
+      text = argv[i];
+      continue;
+    }
+    if (strcmp(argv[i], "--think") == 0) {
+      think = 1;
+      continue;
+    }
+    if (i + 1 < argc && strcmp(argv[i], "--seed") == 0) {
+      seed = strtoull(argv[++i], NULL, 10);
+      continue;
+    }
+    if (i + 1 < argc && strcmp(argv[i], "--temp") == 0) {
+      temp = strtof(argv[++i], NULL);
+      continue;
+    }
+    if (i + 1 < argc && strcmp(argv[i], "--top-k") == 0) {
+      top_k = atoi(argv[++i]);
+      continue;
+    }
+    if (i + 1 < argc && strcmp(argv[i], "--top-p") == 0) {
+      top_p = strtof(argv[++i], NULL);
+      continue;
+    }
+    if (i + 1 < argc && strcmp(argv[i], "--n") == 0) {
+      max_new = strtoull(argv[++i], NULL, 10);
+      continue;
+    }
+    fprintf(stderr, "error: unknown argument %s\n", argv[i]);
+    return 1;
+  }
+  if (!text || max_new == 0) {
+    fprintf(stderr, "usage: %s generate <text> [--seed N] [--temp T] [--top-k K] [--top-p P] [--n NT] [--think]\n", argv[0]);
+    return 1;
+  }
+
+  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkGguf *gguf = NULL;
+  TkInfer *inf = NULL;
+  uint32_t *prompt = NULL, *gen = NULL;
+  float *row = NULL;
+  tk_status s = TK_OK;
+  int rc = 1;
+  if (!tz) {
+    fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
+    return 1;
+  }
+  if (!(gguf = tk_gguf_open(QWEN_DEFAULT_GGUF))) goto out;
+  TkModel cfg = tk_model_from_gguf(gguf);
+
+  size_t pn = 0;
+  prompt = tk_chat_prompt(tz, text, think, &pn);
+  if (!(inf = tk_infer_new(gguf, &cfg))) {
+    fprintf(stderr, "error: failed to initialize inference engine\n");
+    goto out;
+  }
+  row = tk_xmalloc(cfg.vocab_size * sizeof(float));
+  gen = tk_xmalloc(max_new * sizeof(uint32_t));
+  fprintf(stderr, "prompt: %zu tokens\n", pn);
+
+  for (size_t t = 0; t < pn && s == TK_OK; t++) s = tk_infer_step(inf, prompt[t], row);
+  if (s != TK_OK) {
+    fprintf(stderr, "error: forward pass failed (status %d)\n", s);
+    goto out;
+  }
+
+  uint64_t rng = seed;
+  size_t gn = 0;
+  for (size_t g = 0; g < max_new && s == TK_OK; g++) {
+    uint32_t tok = tk_sample(row, cfg.vocab_size, temp, top_k, top_p, &rng);
+    /* stop at </|im_end|> (eos) or <|endoftext|> (this config's bos id). */
+    if (tok == (uint32_t)cfg.eos_token_id || tok == (uint32_t)cfg.bos_token_id) break;
+    gen[gn++] = tok;
+    s = tk_infer_step(inf, tok, row);
+  }
+  if (s != TK_OK) {
+    fprintf(stderr, "error: generation failed (status %d)\n", s);
+    goto out;
+  }
+
+  char *out_text = tk_detokenize(tz, gen, gn);
+  printf("%s\n", out_text);
+  free(out_text);
+  fprintf(stderr, "generated %zu tokens (seed %llu)\n", gn, (unsigned long long)seed);
+  rc = 0;
+
+out:
+  free(row);
+  free(prompt);
+  free(gen);
+  tk_infer_free(inf);
+  tk_gguf_close(gguf);
+  tk_tokenizer_close(tz);
+  return rc;
+}
+
 static int run_tests(void) {
   if (tk_test_all() != 0) {
     fprintf(stderr, "tests failed\n");
@@ -216,6 +324,7 @@ int main(int argc, char **argv) {
 
   if (strcmp(mode, "tokenize") == 0 || strcmp(mode, "detokenize") == 0) { return run_tokenizer_cmd(argc, argv); }
   if (strcmp(mode, "forward") == 0) return run_forward_cmd(argc, argv);
+  if (strcmp(mode, "generate") == 0) return run_generate_cmd(argc, argv);
 
   if (argc > 2) {
     print_usage(argv[0]);
