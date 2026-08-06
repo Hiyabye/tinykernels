@@ -13,19 +13,55 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define QWEN_DEFAULT_GGUF "Qwen3-0.6B-Q8_0.gguf"
+static const char *g_gguf = NULL; /* resolved model GGUF path */
 
 static void print_usage(const char *program) {
-  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>|generate <text> [options]|bench-infer]\n",
+  fprintf(stderr,
+          "usage: %s [--model NAME|--gguf PATH] [test|bench|all|model|models|tokenize <text>|detokenize <id...>|forward <text>|generate <text> "
+          "[options]|bench-infer]\n",
           program);
   fprintf(stderr, "generate options: --seed N --temp T --top-k K --top-p P --n NT --think\n");
   fprintf(stderr, "bench-infer options: --tokens N\n");
+  fprintf(stderr, "  --model NAME selects a registered model preset; --gguf PATH overrides with a raw file\n");
+}
+
+/* Pull --model NAME / --gguf PATH out of argv (any position), compact the rest,
+ * and resolve g_gguf. Returns -1 on an unknown --model name. */
+static int pick_model(int *argc, char *argv[]) {
+  const char *model = NULL, *path = NULL;
+  int out = 1;
+  for (int i = 1; i < *argc; i++) {
+    if (i + 1 < *argc && strcmp(argv[i], "--model") == 0) {
+      model = argv[i + 1];
+      i++;
+      continue;
+    }
+    if (i + 1 < *argc && strcmp(argv[i], "--gguf") == 0) {
+      path = argv[i + 1];
+      i++;
+      continue;
+    }
+    argv[out++] = argv[i];
+  }
+  *argc = out;
+
+  if (path) g_gguf = path;
+  else if (model) {
+    const TkModelPreset *p = tk_model_preset(model);
+    if (!p) {
+      fprintf(stderr, "error: unknown model '%s' (see `./tinykernels models`)\n", model);
+      return -1;
+    }
+    g_gguf = p->gguf;
+  }
+  if (!g_gguf) g_gguf = tk_model_default_gguf();
+  return 0;
 }
 
 static int run_tokenizer_cmd(int argc, char **argv) {
-  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(g_gguf);
   if (!tz) {
-    fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
+    fprintf(stderr, "error: failed to load tokenizer from %s\n", g_gguf);
     return 1;
   }
 
@@ -137,15 +173,15 @@ static int run_model_cmd(const char *path) {
 static int run_forward_cmd(int argc, char **argv) {
   const char *text = argc > 2 ? argv[2] : "The capital of France is";
   tk_status s = TK_ERR_INTERNAL;
-  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(g_gguf);
   TkGguf *gguf = NULL;
   uint32_t *ids = NULL;
   TkMatrix logits = {0};
   if (!tz) {
-    fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
+    fprintf(stderr, "error: failed to load tokenizer from %s\n", g_gguf);
     return 1;
   }
-  gguf = tk_gguf_open(QWEN_DEFAULT_GGUF);
+  gguf = tk_gguf_open(g_gguf);
   if (!gguf) {
     tk_tokenizer_close(tz);
     return 1;
@@ -255,7 +291,7 @@ static int run_generate_cmd(int argc, char **argv) {
     return 1;
   }
 
-  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(g_gguf);
   TkGguf *gguf = NULL;
   TkInfer *inf = NULL;
   uint32_t *prompt = NULL, *gen = NULL;
@@ -263,10 +299,10 @@ static int run_generate_cmd(int argc, char **argv) {
   tk_status s = TK_OK;
   int rc = 1;
   if (!tz) {
-    fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
+    fprintf(stderr, "error: failed to load tokenizer from %s\n", g_gguf);
     return 1;
   }
-  if (!(gguf = tk_gguf_open(QWEN_DEFAULT_GGUF))) goto out;
+  if (!(gguf = tk_gguf_open(g_gguf))) goto out;
   TkModel cfg = tk_model_from_gguf(gguf);
 
   size_t pn = 0;
@@ -330,7 +366,7 @@ static int run_bench_infer_cmd(int argc, char **argv) {
   }
   if (tokens == 0) return 1;
 
-  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(g_gguf);
   TkGguf *gguf = NULL;
   TkInfer *inf = NULL;
   uint32_t *ids = NULL;
@@ -338,7 +374,7 @@ static int run_bench_infer_cmd(int argc, char **argv) {
   tk_status s = TK_OK;
   int rc = 1;
   if (!tz) return 1;
-  if (!(gguf = tk_gguf_open(QWEN_DEFAULT_GGUF))) goto out;
+  if (!(gguf = tk_gguf_open(g_gguf))) goto out;
   TkModel cfg = tk_model_from_gguf(gguf);
   size_t pn = tk_tokenize(tz, "The capital of France is", &ids);
   if (!(inf = tk_infer_new(gguf, &cfg))) goto out;
@@ -387,6 +423,8 @@ static int run_tests(void) {
 }
 
 int main(int argc, char **argv) {
+  if (pick_model(&argc, argv) != 0) return 1; /* --model/--gguf stripped before dispatch */
+
   const char *mode = argc > 1 ? argv[1] : "test";
 
   if (strcmp(mode, "tokenize") == 0 || strcmp(mode, "detokenize") == 0) { return run_tokenizer_cmd(argc, argv); }
@@ -397,6 +435,14 @@ int main(int argc, char **argv) {
   if (argc > 2) {
     print_usage(argv[0]);
     return 1;
+  }
+
+  if (strcmp(mode, "models") == 0) {
+    for (size_t i = 0; i < tk_model_preset_count(); i++) {
+      const TkModelPreset *p = tk_model_preset_at(i);
+      printf("%-12s %s\n", p->name, p->gguf);
+    }
+    return 0;
   }
 
   if (strcmp(mode, "test") == 0) return run_tests();
@@ -412,7 +458,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  if (strcmp(mode, "model") == 0) return run_model_cmd(QWEN_DEFAULT_GGUF);
+  if (strcmp(mode, "model") == 0) return run_model_cmd(g_gguf);
 
   print_usage(argv[0]);
   return 1;

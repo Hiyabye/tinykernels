@@ -45,12 +45,29 @@ SIMD kernels are enabled automatically when the target supports x86 SSE. Unsuppo
 ./tinykernels bench  # benchmark suite
 ./tinykernels all    # tests, then benchmarks
 ./tinykernels model  # print GGUF-derived architecture, validate tensor inventory
+./tinykernels models # list registered model presets
 ./tinykernels tokenize "text"    # byte-level BPE -> token ids
 ./tinykernels detokenize 9707 11 # token ids -> text
 ./tinykernels forward "prompt"   # full Qwen3 forward pass -> greedy next-token ids + logits
 ./tinykernels generate "prompt"  # autoregressive generation (sampling + KV cache)
 ./tinykernels bench-infer        # real inference speed, ms/token vs GEMM config
 ```
+
+## Model selection
+
+Model architecture is read from the GGUF header, never hardcoded. `--model NAME`
+selects a registered preset and `--gguf PATH` any raw GGUF file (both may appear
+anywhere on the command line):
+
+```bash
+./tinykernels --model qwen3-0.6b generate "hello"
+./tinykernels --gguf my-model.Q8_0.gguf generate "hello"
+./tinykernels models   # -> qwen3-0.6b  Qwen3-0.6B-Q8_0.gguf
+```
+
+`Qwen3-0.6B-Q8_0.gguf` is the default. Register new models by adding a row to
+the `PRESETS` table in `src/model/tk_model.c`.
+
 
 Running `./tinykernels` with no arguments defaults to `test`.
 

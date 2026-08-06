@@ -2,24 +2,25 @@
 #include "tk_gguf.h"
 
 #include <stdio.h>
+#include <string.h>
 
-TkModel tk_model_qwen3_0_6b(void) {
-  return (TkModel){
-      .hidden_size = 1024,
-      .num_layers = 28,
-      .num_attention_heads = 16,
-      .num_kv_heads = 8,
-      .head_dim = 128,
-      .intermediate_size = 3072,
-      .vocab_size = 151936,
-      .max_position_embeddings = 40960,
-      .rms_norm_eps = 1e-6f,
-      .rope_theta = 1000000.0f,
-      .tie_word_embeddings = true,
-      .bos_token_id = 151643,
-      .eos_token_id = 151645,
-  };
+/* Model presets: alias -> GGUF file. Add a row here to register another model. */
+static const TkModelPreset PRESETS[] = {
+    {"qwen3-0.6b", "Qwen3-0.6B-Q8_0.gguf"},
+};
+#define PRESET_COUNT (sizeof(PRESETS) / sizeof(PRESETS[0]))
+
+size_t tk_model_preset_count(void) { return PRESET_COUNT; }
+
+const TkModelPreset *tk_model_preset_at(size_t i) { return i < PRESET_COUNT ? &PRESETS[i] : NULL; }
+
+const TkModelPreset *tk_model_preset(const char *name) {
+  for (size_t i = 0; i < PRESET_COUNT; i++)
+    if (strcmp(PRESETS[i].name, name) == 0) return &PRESETS[i];
+  return NULL;
 }
+
+const char *tk_model_default_gguf(void) { return PRESETS[0].gguf; }
 
 TkModel tk_model_from_gguf(const struct TkGguf *g) {
   TkModel c = {0};

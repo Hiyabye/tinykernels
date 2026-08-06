@@ -43,7 +43,7 @@ Validation (src/backend/tk_validate.c)
 Model (src/model/)
   ├── tk_gguf.c       GGUF v3 reader (header, metadata KV, tensor info, F32/Q8_0 dequant)
   ├── tk_tokenizer.c  byte-level BPE tokenizer/detokenizer (vocab from GGUF)
-  ├── tk_model.c      TkModel config (hardcoded Qwen3-0.6B + GGUF-derived)
+  ├── tk_model.c      TkModel config (from GGUF header) + model-preset registry
   ├── tk_forward.c    TkInfer: per-layer KV cache + cached resident weights
   └── tk_generate.c   chat template + sampling (temperature/top-k/top-p)
 
@@ -51,6 +51,12 @@ TkInfer dequantizes **every weight resident** at init (transposed to y = x @ W),
 so the per-token step does zero file I/O; the hot GEMMs (QKV, output, SwiGLU
 MLP, logits) run the SIMD IKJ kernel by default (config swapped via
 tk_infer_set_cfg). bench-infer times tokens across plain/blocked/fast configs.
+
+Model configuration is **not hardcoded**: architecture is read from the GGUF
+header (`tk_model_from_gguf`). tk_model registers presets (alias -> GGUF file)
+so models are swappable from the CLI: `--model NAME` selects a preset,
+`--gguf PATH` a raw file, `./tinykernels models` lists presets. Add a row to
+the PRESETS table in tk_model.c to register another model.
 
 Data layout: Row-major `float` matrices. `tk_elem_t` is `typedef float`.
 ```
@@ -121,7 +127,7 @@ Plots need `matplotlib`/`pandas`; `make bench` prefers the project venv (`.venv/
 |`src/kernels/tk_simd.c`|SSE IKJ kernels (`__m128` vectorized)|
 |`include/tk_gguf.h`, `src/model/tk_gguf.c`|GGUF v3 reader: header + metadata KV + tensor info, on-demand F32/Q8_0 dequant; shared by tokenizer and weight loading|
 |`include/tk_tokenizer.h`, `src/model/tk_tokenizer.c`|Byte-level BPE tokenizer/detokenizer (vocab from GGUF)|
-|`include/tk_model.h`, `src/model/tk_model.c`|`TkModel` config (hardcoded + GGUF-derived) + config helpers|
+|`include/tk_model.h`, `src/model/tk_model.c`|`TkModel` config (from GGUF header) + model-preset registry (alias -> GGUF, `tk_model_preset*`, `tk_model_default_gguf`)|
 |`include/tk_forward.h`, `src/model/tk_forward.c`|`TkInfer` incremental engine: per-layer KV cache, resident dequantized weights, `tk_infer_step` + `tk_infer_set_cfg` GEMM override|
 |`include/tk_generate.h`, `src/model/tk_generate.c`|Chat template + sampling (temperature/top-k/top-p, seeded xorshift64)|
 |`src/test/tk_test.c`|Correctness vs reference (1e-6) + tokenizer + gguf/model regression cases|

@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define QWEN_DEFAULT_GGUF "Qwen3-0.6B-Q8_0.gguf"
-
 #define COLOR_RED "\x1b[31m"
 #define COLOR_GREEN "\x1b[32m"
 #define COLOR_RESET "\x1b[0m"
@@ -210,7 +208,7 @@ static void test_tokenizer(void) {
   const uint32_t want[] = {9707, 11, 1879, 0, 1096, 374, 264, 1207, 16948, 18, 1273, 13};
   const size_t want_n = sizeof(want) / sizeof(want[0]);
 
-  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(tk_model_default_gguf());
   CHECK(tz != NULL);
   if (!tz) return;
 
@@ -240,7 +238,7 @@ static void test_tokenizer(void) {
 /* GGUF/model regression: config anchors + tensor presence + dequant spot value. */
 static void test_model(void) {
   printf("\n== gguf/model regression ==\n");
-  TkGguf *ctx = tk_gguf_open(QWEN_DEFAULT_GGUF);
+  TkGguf *ctx = tk_gguf_open(tk_model_default_gguf());
   CHECK(ctx != NULL);
   if (!ctx) return;
 
