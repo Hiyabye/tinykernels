@@ -1,6 +1,6 @@
-#include "qwen_tokenizer.h"
-#include "gguf.h"
-#include "unicode_ranges.h"
+#include "tk_tokenizer.h"
+#include "internal/unicode_ranges.h"
+#include "tk_gguf.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -64,7 +64,7 @@ static size_t smap_get(const Entry *map, size_t cap, const char *key) {
   return SIZE_MAX;
 }
 
-struct QwenTokenizer {
+struct TkTokenizer {
   size_t vocab_size;
   char **tokens;    /* id -> mapped-space string                        */
   uint8_t *special; /* id -> 1 if a non-mergeable special token         */
@@ -85,8 +85,8 @@ struct QwenTokenizer {
  *   is_letter(cp) = general category L*   (\p{L})
  *   is_number(cp) = general category N*   (\p{N})
  *   is_whitespace  = llama.cpp White_Space set.
- * The letter/number tables are generated (src/llm/unicode_ranges.h), see
- * scripts/gen-unicode-data.py equivalent; whitespace is the explicit set. */
+ * The letter/number tables are generated (include/internal/unicode_ranges.h),
+ * see scripts/gen-unicode-data.py equivalent; whitespace is the explicit set. */
 static bool in_ranges(uint32_t cp, const qwen_unicode_range *r, size_t n) {
   size_t lo = 0, hi = n;
   while (lo < hi) {
@@ -230,12 +230,12 @@ typedef struct {
 static void ubuf_push(U32Buf *b, uint32_t x) {
   if (b->n == b->cap) {
     b->cap = b->cap ? b->cap * 2 : 64;
-    b->v = realloc(b->v, b->cap * sizeof(uint32_t));
+    b->v = tk_xrealloc(b->v, b->cap * sizeof(uint32_t));
   }
   b->v[b->n++] = x;
 }
 
-static size_t merge_rank(const QwenTokenizer *tz, uint32_t a, uint32_t b) {
+static size_t merge_rank(const TkTokenizer *tz, uint32_t a, uint32_t b) {
   const char *sa = tz->tokens[a], *sb = tz->tokens[b];
   size_t la = strlen(sa), lb = strlen(sb);
   char tmp[la + lb + 1];
@@ -246,13 +246,13 @@ static size_t merge_rank(const QwenTokenizer *tz, uint32_t a, uint32_t b) {
 }
 
 /* Greedy BPE on a word of byte-token ids; appends the merged ids to `out`. */
-static void bpe_run(const QwenTokenizer *tz, const uint32_t *word_ids, size_t n, U32Buf *out) {
+static void bpe_run(const TkTokenizer *tz, const uint32_t *word_ids, size_t n, U32Buf *out) {
   if (n == 1) {
     ubuf_push(out, word_ids[0]);
     return;
   }
   size_t wn = n;
-  uint32_t *word = malloc(n * sizeof(uint32_t));
+  uint32_t *word = tk_xmalloc(n * sizeof(uint32_t));
   memcpy(word, word_ids, n * sizeof(uint32_t));
   for (;;) {
     size_t best = SIZE_MAX, rank = SIZE_MAX;
@@ -265,7 +265,7 @@ static void bpe_run(const QwenTokenizer *tz, const uint32_t *word_ids, size_t n,
     }
     if (best == SIZE_MAX) break;
     uint32_t a = word[best], merged = (uint32_t)rank;
-    uint32_t *nw = malloc(wn * sizeof(uint32_t));
+    uint32_t *nw = tk_xmalloc(wn * sizeof(uint32_t));
     size_t nn = 0, i = 0;
     while (i < wn) {
       if (i + 1 < wn && word[i] == a && word[i + 1] == word[best + 1]) {
@@ -284,10 +284,10 @@ static void bpe_run(const QwenTokenizer *tz, const uint32_t *word_ids, size_t n,
 
 /* BPE a single word [start, end) of codepoints: re-encode to bytes, map each
  * byte to its byte-token id, then run greedy BPE. */
-static void bpe_word(const QwenTokenizer *tz, const uint32_t *c, size_t start, size_t end, U32Buf *out) {
+static void bpe_word(const TkTokenizer *tz, const uint32_t *c, size_t start, size_t end, U32Buf *out) {
   size_t blen = 0;
   for (size_t i = start; i < end; i++) blen += (c[i] < 0x80) ? 1 : (c[i] < 0x800) ? 2 : (c[i] < 0x10000) ? 3 : 4;
-  uint32_t *wids = malloc(blen * sizeof(uint32_t));
+  uint32_t *wids = tk_xmalloc(blen * sizeof(uint32_t));
   size_t wn = 0;
   uint8_t buf[4];
   for (size_t i = start; i < end; i++) {
@@ -299,11 +299,11 @@ static void bpe_word(const QwenTokenizer *tz, const uint32_t *c, size_t start, s
 }
 
 /* BPE a contiguous byte region that contains no special token strings. */
-static void bpe_segment(const QwenTokenizer *tz, const uint8_t *bytes, size_t n, U32Buf *out) {
+static void bpe_segment(const TkTokenizer *tz, const uint8_t *bytes, size_t n, U32Buf *out) {
   if (n == 0) return;
 
   /* Decode raw UTF-8 to codepoints (invalid bytes kept as-is, 1 byte each). */
-  uint32_t *c = malloc(n * sizeof(uint32_t));
+  uint32_t *c = tk_xmalloc(n * sizeof(uint32_t));
   size_t nc = 0, i = 0;
   while (i < n) {
     size_t cl;
@@ -317,7 +317,7 @@ static void bpe_segment(const QwenTokenizer *tz, const uint8_t *bytes, size_t n,
     }
   }
 
-  size_t *ends = malloc(nc * sizeof(size_t));
+  size_t *ends = tk_xmalloc(nc * sizeof(size_t));
   size_t nw = qwen2_split_words(c, nc, ends);
   size_t start = 0;
   for (size_t k = 0; k < nw; k++) {
@@ -330,7 +330,7 @@ static void bpe_segment(const QwenTokenizer *tz, const uint8_t *bytes, size_t n,
 }
 
 /* Longest-match special token at byte position i, or UINT32_MAX if none. */
-static uint32_t find_special(const QwenTokenizer *tz, const uint8_t *bytes, size_t i, size_t len, size_t *m) {
+static uint32_t find_special(const TkTokenizer *tz, const uint8_t *bytes, size_t i, size_t len, size_t *m) {
   size_t best_len = 0;
   uint32_t best = UINT32_MAX;
   for (size_t s = 0; s < tz->num_special; s++) {
@@ -349,30 +349,31 @@ static uint32_t find_special(const QwenTokenizer *tz, const uint8_t *bytes, size
  * Public API
  * ========================================================================= */
 
-QwenTokenizer *qwen_tokenizer_load(const char *path) {
-  GGUFContext *ctx = gguf_open(path);
+TkTokenizer *tk_tokenizer_open(const char *path) {
+  TkGguf *ctx = tk_gguf_open(path);
   if (!ctx) return NULL;
 
   size_t ntok;
   char **tokens = NULL;
-  if ((ntok = gguf_get_string_array(ctx, "tokenizer.ggml.tokens", &tokens)) == 0) {
-    gguf_close(ctx);
+  if ((ntok = tk_gguf_str_array(ctx, "tokenizer.ggml.tokens", &tokens)) == 0) {
+    TK_LOGE("tokenizer: missing tokenizer.ggml.tokens in '%s'", path);
+    tk_gguf_close(ctx);
     return NULL;
   }
 
   /* token_type is optional (defaults to NORMAL). It comes back as int32(). */
   int32_t *token_types = NULL;
-  if (gguf_get_i32_array(ctx, "tokenizer.ggml.token_type", &token_types) != ntok) {
+  if (tk_gguf_i32_array(ctx, "tokenizer.ggml.token_type", &token_types) != ntok) {
     free(token_types);
     token_types = NULL;
   }
 
-  QwenTokenizer *tz = calloc(1, sizeof(*tz));
+  TkTokenizer *tz = tk_xcalloc(1, sizeof(*tz));
   tz->vocab_size = ntok;
   tz->tokens = tokens;
-  tz->add_bos_token = gguf_get_bool(ctx, "tokenizer.ggml.add_bos_token", false);
-  tz->bos_token_id = (uint32_t)gguf_get_int(ctx, "tokenizer.ggml.bos_token_id", 0);
-  tz->special = calloc(ntok, 1);
+  tz->add_bos_token = tk_gguf_bool(ctx, "tokenizer.ggml.add_bos_token", false);
+  tz->bos_token_id = (uint32_t)tk_gguf_i64(ctx, "tokenizer.ggml.bos_token_id", 0);
+  tz->special = tk_xcalloc(ntok, 1);
 
   /* Non-mergeable = everything that isn't NORMAL(1) or BYTE(6). Matched verbatim
    * (longest match) and never BPE-merged. UNUSED(5) pad tokens don't occur in real
@@ -386,7 +387,7 @@ QwenTokenizer *qwen_tokenizer_load(const char *path) {
     }
   }
   tz->num_special = ns;
-  tz->special_ids = malloc(ns * sizeof(uint32_t));
+  tz->special_ids = tk_xmalloc(ns * sizeof(uint32_t));
   for (size_t id = 0, s = 0; id < ntok; id++)
     if (tz->special[id]) tz->special_ids[s++] = (uint32_t)id;
 
@@ -395,7 +396,7 @@ QwenTokenizer *qwen_tokenizer_load(const char *path) {
   size_t cap = 1;
   while (cap < keepable * 2) cap <<= 1;
   tz->map_cap = cap;
-  tz->map = calloc(cap, sizeof(Entry));
+  tz->map = tk_xcalloc(cap, sizeof(Entry));
   for (size_t id = 0; id < ntok; id++)
     if (!tz->special[id]) smap_put(tz->map, cap, tz->tokens[id], id);
 
@@ -413,11 +414,11 @@ QwenTokenizer *qwen_tokenizer_load(const char *path) {
   }
 
   free(token_types);
-  gguf_close(ctx);
+  tk_gguf_close(ctx);
   return tz;
 }
 
-void qwen_tokenizer_free(QwenTokenizer *tz) {
+void tk_tokenizer_close(TkTokenizer *tz) {
   if (!tz) return;
   for (size_t i = 0; i < tz->vocab_size; i++) free(tz->tokens[i]);
   free(tz->tokens);
@@ -427,7 +428,7 @@ void qwen_tokenizer_free(QwenTokenizer *tz) {
   free(tz);
 }
 
-size_t qwen_tokenize(const QwenTokenizer *tz, const char *text, uint32_t **out_ids) {
+size_t tk_tokenize(const TkTokenizer *tz, const char *text, uint32_t **out_ids) {
   const uint8_t *bytes = (const uint8_t *)text;
   size_t len = strlen(text);
   U32Buf out = {0};
@@ -448,7 +449,7 @@ size_t qwen_tokenize(const QwenTokenizer *tz, const char *text, uint32_t **out_i
 
   *out_ids = out.v;
   if (tz->add_bos_token) { /* prepend BOS (not the case for Qwen3-0.6B, add_bos=false) */
-    uint32_t *tmp = malloc((out.n + 1) * sizeof(uint32_t));
+    uint32_t *tmp = tk_xmalloc((out.n + 1) * sizeof(uint32_t));
     tmp[0] = tz->bos_token_id;
     memcpy(tmp + 1, out.v, out.n * sizeof(uint32_t));
     free(out.v);
@@ -458,7 +459,7 @@ size_t qwen_tokenize(const QwenTokenizer *tz, const char *text, uint32_t **out_i
   return out.n;
 }
 
-char *qwen_detokenize(const QwenTokenizer *tz, const uint32_t *ids, size_t n) {
+char *tk_detokenize(const TkTokenizer *tz, const uint32_t *ids, size_t n) {
   size_t total = 0;
   for (size_t k = 0; k < n; k++) {
     if (ids[k] >= tz->vocab_size) continue; /* skip invalid ids */
@@ -479,7 +480,7 @@ char *qwen_detokenize(const QwenTokenizer *tz, const uint32_t *ids, size_t n) {
       }
     }
   }
-  char *out = malloc(total + 1);
+  char *out = tk_xmalloc(total + 1);
   size_t o = 0;
   for (size_t k = 0; k < n; k++) {
     if (ids[k] >= tz->vocab_size) continue;

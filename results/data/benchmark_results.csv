@@ -1,115 +1,289 @@
 sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label
-matrix_size,64,64,64,single,ijk,0,0,1,1,10,0.000818,1.000000,single_plain_sisd_ijk
-matrix_size,64,64,64,pthread,ijk,0,0,4,1,10,0.000252,3.252487,pthread_plain_sisd_ijk
-matrix_size,64,64,64,single,ijk,1,0,1,32,10,0.000874,0.936443,single_blocked_sisd_ijk
-matrix_size,64,64,64,pthread,ijk,1,0,4,32,10,0.000264,3.095582,pthread_blocked_sisd_ijk
-matrix_size,64,64,64,single,ikj,0,1,1,1,10,0.000356,2.298627,single_plain_simd_ikj
-matrix_size,64,64,64,single,ikj,1,1,1,32,10,0.000270,3.026003,single_blocked_simd_ikj
-matrix_size,64,64,64,pthread,ikj,0,1,4,1,10,0.000127,6.440901,pthread_plain_simd_ikj
-matrix_size,64,64,64,pthread,ikj,1,1,4,32,10,0.000109,7.536773,pthread_blocked_simd_ikj
-matrix_size,128,128,128,single,ijk,0,0,1,1,10,0.006155,1.000000,single_plain_sisd_ijk
-matrix_size,128,128,128,pthread,ijk,0,0,4,1,10,0.001644,3.742733,pthread_plain_sisd_ijk
-matrix_size,128,128,128,single,ijk,1,0,1,32,10,0.007016,0.877258,single_blocked_sisd_ijk
-matrix_size,128,128,128,pthread,ijk,1,0,4,32,10,0.001821,3.379213,pthread_blocked_sisd_ijk
-matrix_size,128,128,128,single,ikj,0,1,1,1,10,0.002222,2.770052,single_plain_simd_ikj
-matrix_size,128,128,128,single,ikj,1,1,1,32,10,0.001726,3.566169,single_blocked_simd_ikj
-matrix_size,128,128,128,pthread,ikj,0,1,4,1,10,0.000527,11.678580,pthread_plain_simd_ikj
-matrix_size,128,128,128,pthread,ikj,1,1,4,32,10,0.000469,13.124301,pthread_blocked_simd_ikj
-matrix_size,256,256,256,single,ijk,0,0,1,1,10,0.038000,1.000000,single_plain_sisd_ijk
-matrix_size,256,256,256,pthread,ijk,0,0,4,1,10,0.009692,3.920535,pthread_plain_sisd_ijk
-matrix_size,256,256,256,single,ijk,1,0,1,32,10,0.044371,0.856404,single_blocked_sisd_ijk
-matrix_size,256,256,256,pthread,ijk,1,0,4,32,10,0.011422,3.326859,pthread_blocked_sisd_ijk
-matrix_size,256,256,256,single,ikj,0,1,1,1,10,0.014162,2.683213,single_plain_simd_ikj
-matrix_size,256,256,256,single,ikj,1,1,1,32,10,0.013658,2.782304,single_blocked_simd_ikj
-matrix_size,256,256,256,pthread,ikj,0,1,4,1,10,0.003724,10.204008,pthread_plain_simd_ikj
-matrix_size,256,256,256,pthread,ikj,1,1,4,32,10,0.003567,10.654556,pthread_blocked_simd_ikj
-matrix_size,512,512,512,single,ijk,0,0,1,1,10,0.308947,1.000000,single_plain_sisd_ijk
-matrix_size,512,512,512,pthread,ijk,0,0,4,1,10,0.077910,3.965443,pthread_plain_sisd_ijk
-matrix_size,512,512,512,single,ijk,1,0,1,32,10,0.358413,0.861988,single_blocked_sisd_ijk
-matrix_size,512,512,512,pthread,ijk,1,0,4,32,10,0.091503,3.376368,pthread_blocked_sisd_ijk
-matrix_size,512,512,512,single,ikj,0,1,1,1,10,0.109746,2.815126,single_plain_simd_ikj
-matrix_size,512,512,512,single,ikj,1,1,1,32,10,0.111154,2.779452,single_blocked_simd_ikj
-matrix_size,512,512,512,pthread,ikj,0,1,4,1,10,0.028172,10.966466,pthread_plain_simd_ikj
-matrix_size,512,512,512,pthread,ikj,1,1,4,32,10,0.028220,10.947981,pthread_blocked_simd_ikj
-matrix_size,1024,1024,1024,single,ijk,0,0,1,1,10,3.002179,1.000000,single_plain_sisd_ijk
-matrix_size,1024,1024,1024,pthread,ijk,0,0,4,1,10,0.750422,4.000656,pthread_plain_sisd_ijk
-matrix_size,1024,1024,1024,single,ijk,1,0,1,32,10,2.885786,1.040333,single_blocked_sisd_ijk
-matrix_size,1024,1024,1024,pthread,ijk,1,0,4,32,10,0.760618,3.947026,pthread_blocked_sisd_ijk
-matrix_size,1024,1024,1024,single,ikj,0,1,1,1,10,0.862702,3.479972,single_plain_simd_ikj
-matrix_size,1024,1024,1024,single,ikj,1,1,1,32,10,0.887486,3.382790,single_blocked_simd_ikj
-matrix_size,1024,1024,1024,pthread,ikj,0,1,4,1,10,0.218188,13.759600,pthread_plain_simd_ikj
-matrix_size,1024,1024,1024,pthread,ikj,1,1,4,32,10,0.225560,13.309864,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,1,1,10,0.307923,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,1,32,10,0.362399,0.849681,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,1,1,10,0.109733,2.806103,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,1,32,10,0.110950,2.775323,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,2,1,10,0.154222,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,2,32,10,0.181682,0.848855,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,2,1,10,0.055235,2.792129,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,2,32,10,0.056487,2.730200,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,3,1,10,0.103950,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,3,32,10,0.121806,0.853410,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,3,1,10,0.037873,2.744707,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,3,32,10,0.037868,2.745095,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,4,1,10,0.077334,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,4,32,10,0.091200,0.847960,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,4,1,10,0.027936,2.768242,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,4,32,10,0.028245,2.737947,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,5,1,10,0.062126,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,5,32,10,0.073485,0.845418,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,5,1,10,0.022468,2.765072,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,5,32,10,0.022926,2.709777,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,6,1,10,0.052569,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,6,32,10,0.061599,0.853401,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,6,1,10,0.018903,2.781031,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,6,32,10,0.018988,2.768461,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,7,1,10,0.045231,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,7,32,10,0.052970,0.853901,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,7,1,10,0.016358,2.765094,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,7,32,10,0.016451,2.749466,pthread_blocked_simd_ikj
-thread_count,512,512,512,pthread,ijk,0,0,8,1,10,0.039819,1.000000,pthread_plain_sisd_ijk
-thread_count,512,512,512,pthread,ijk,1,0,8,32,10,0.045847,0.868538,pthread_blocked_sisd_ijk
-thread_count,512,512,512,pthread,ikj,0,1,8,1,10,0.014235,2.797220,pthread_plain_simd_ikj
-thread_count,512,512,512,pthread,ikj,1,1,8,32,10,0.014457,2.754319,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,2,10,0.294394,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,2,10,0.075710,3.888440,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,2,10,0.306651,0.960028,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,2,10,0.077309,3.808011,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,2,10,0.375910,0.783148,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,2,10,0.095296,3.089253,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,4,10,0.221249,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,4,10,0.055680,3.973580,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,4,10,0.248207,0.891391,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,4,10,0.062902,3.517363,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,4,10,0.184812,1.197158,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,4,10,0.047095,4.697973,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,8,10,0.240909,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,8,10,0.060865,3.958108,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,8,10,0.249767,0.964533,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,8,10,0.063367,3.801768,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,8,10,0.140520,1.714408,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,8,10,0.035761,6.736537,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,16,10,0.251018,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,16,10,0.078300,3.205830,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,16,10,0.240866,1.042148,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,16,10,0.060489,4.149809,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,16,10,0.125586,1.998774,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,16,10,0.031912,7.865924,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,32,10,0.361614,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,32,10,0.091118,3.968661,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,32,10,0.255672,1.414366,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,32,10,0.059218,6.106540,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,32,10,0.110979,3.258402,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,32,10,0.028265,12.793719,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,64,10,0.334977,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,64,10,0.084548,3.961991,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,64,10,0.237056,1.413066,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,64,10,0.060154,5.568686,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,64,10,0.133744,2.504610,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,64,10,0.034644,9.669105,pthread_blocked_simd_ikj
-block_size,512,512,512,single,ijk,1,0,1,128,10,0.319833,1.000000,single_blocked_sisd_ijk
-block_size,512,512,512,pthread,ijk,1,0,4,128,10,0.080894,3.953754,pthread_blocked_sisd_ijk
-block_size,512,512,512,single,ikj,1,0,1,128,10,0.223221,1.432809,single_blocked_sisd_ikj
-block_size,512,512,512,pthread,ikj,1,0,4,128,10,0.056632,5.647611,pthread_blocked_sisd_ikj
-block_size,512,512,512,single,ikj,1,1,1,128,10,0.120349,2.657545,single_blocked_simd_ikj
-block_size,512,512,512,pthread,ikj,1,1,4,128,10,0.030886,10.355257,pthread_blocked_simd_ikj
+
+[benchmark] matrix_size: A=64x64, B=64x64, iterations=10
+-----------------------------------------------------
+single_plain_sisd_ijk         : 0.000059 sec (1.00x)
+matrix_size,64,64,64,single,ijk,0,0,1,1,10,0.000059,1.000000,single_plain_sisd_ijk
+pthread_plain_sisd_ijk        : 0.000047 sec (1.24x)
+matrix_size,64,64,64,pthread,ijk,0,0,4,1,10,0.000047,1.241206,pthread_plain_sisd_ijk
+single_blocked_sisd_ijk       : 0.000056 sec (1.05x)
+matrix_size,64,64,64,single,ijk,1,0,1,32,10,0.000056,1.051064,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.000046 sec (1.28x)
+matrix_size,64,64,64,pthread,ijk,1,0,4,32,10,0.000046,1.279793,pthread_blocked_sisd_ijk
+single_plain_simd_ikj         : 0.000032 sec (1.84x)
+matrix_size,64,64,64,single,ikj,0,1,1,1,10,0.000032,1.843284,single_plain_simd_ikj
+single_blocked_simd_ikj       : 0.000036 sec (1.61x)
+matrix_size,64,64,64,single,ikj,1,1,1,32,10,0.000036,1.614379,single_blocked_simd_ikj
+pthread_plain_simd_ikj        : 0.000036 sec (1.61x)
+matrix_size,64,64,64,pthread,ikj,0,1,4,1,10,0.000036,1.614379,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.000036 sec (1.61x)
+matrix_size,64,64,64,pthread,ikj,1,1,4,32,10,0.000036,1.614379,pthread_blocked_simd_ikj
+
+[benchmark] matrix_size: A=128x128, B=128x128, iterations=10
+-----------------------------------------------------
+single_plain_sisd_ijk         : 0.000751 sec (1.00x)
+matrix_size,128,128,128,single,ijk,0,0,1,1,10,0.000751,1.000000,single_plain_sisd_ijk
+pthread_plain_sisd_ijk        : 0.000228 sec (3.30x)
+matrix_size,128,128,128,pthread,ijk,0,0,4,1,10,0.000228,3.298062,pthread_plain_sisd_ijk
+single_blocked_sisd_ijk       : 0.000451 sec (1.66x)
+matrix_size,128,128,128,single,ijk,1,0,1,32,10,0.000451,1.662530,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.000146 sec (5.14x)
+matrix_size,128,128,128,pthread,ijk,1,0,4,32,10,0.000146,5.135400,pthread_blocked_sisd_ijk
+single_plain_simd_ikj         : 0.000258 sec (2.91x)
+matrix_size,128,128,128,single,ikj,0,1,1,1,10,0.000258,2.909427,single_plain_simd_ikj
+single_blocked_simd_ikj       : 0.000320 sec (2.35x)
+matrix_size,128,128,128,single,ikj,1,1,1,32,10,0.000320,2.345753,single_blocked_simd_ikj
+pthread_plain_simd_ikj        : 0.000092 sec (8.16x)
+matrix_size,128,128,128,pthread,ikj,0,1,4,1,10,0.000092,8.155440,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.000106 sec (7.08x)
+matrix_size,128,128,128,pthread,ikj,1,1,4,32,10,0.000106,7.082115,pthread_blocked_simd_ikj
+
+[benchmark] matrix_size: A=256x256, B=256x256, iterations=10
+-----------------------------------------------------
+single_plain_sisd_ijk         : 0.010862 sec (1.00x)
+matrix_size,256,256,256,single,ijk,0,0,1,1,10,0.010862,1.000000,single_plain_sisd_ijk
+pthread_plain_sisd_ijk        : 0.002759 sec (3.94x)
+matrix_size,256,256,256,pthread,ijk,0,0,4,1,10,0.002759,3.937813,pthread_plain_sisd_ijk
+single_blocked_sisd_ijk       : 0.003649 sec (2.98x)
+matrix_size,256,256,256,single,ijk,1,0,1,32,10,0.003649,2.976449,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.000954 sec (11.38x)
+matrix_size,256,256,256,pthread,ijk,1,0,4,32,10,0.000954,11.381589,pthread_blocked_sisd_ijk
+single_plain_simd_ikj         : 0.002059 sec (5.28x)
+matrix_size,256,256,256,single,ikj,0,1,1,1,10,0.002059,5.275648,single_plain_simd_ikj
+single_blocked_simd_ikj       : 0.002616 sec (4.15x)
+matrix_size,256,256,256,single,ikj,1,1,1,32,10,0.002616,4.152244,single_blocked_simd_ikj
+pthread_plain_simd_ikj        : 0.000545 sec (19.93x)
+matrix_size,256,256,256,pthread,ikj,0,1,4,1,10,0.000545,19.934588,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.000678 sec (16.03x)
+matrix_size,256,256,256,pthread,ikj,1,1,4,32,10,0.000678,16.031140,pthread_blocked_simd_ikj
+
+[benchmark] matrix_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_plain_sisd_ijk         : 0.135056 sec (1.00x)
+matrix_size,512,512,512,single,ijk,0,0,1,1,10,0.135056,1.000000,single_plain_sisd_ijk
+pthread_plain_sisd_ijk        : 0.032245 sec (4.19x)
+matrix_size,512,512,512,pthread,ijk,0,0,4,1,10,0.032245,4.188504,pthread_plain_sisd_ijk
+single_blocked_sisd_ijk       : 0.047905 sec (2.82x)
+matrix_size,512,512,512,single,ijk,1,0,1,32,10,0.047905,2.819231,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.012387 sec (10.90x)
+matrix_size,512,512,512,pthread,ijk,1,0,4,32,10,0.012387,10.902736,pthread_blocked_sisd_ijk
+single_plain_simd_ikj         : 0.016830 sec (8.02x)
+matrix_size,512,512,512,single,ikj,0,1,1,1,10,0.016830,8.024763,single_plain_simd_ikj
+single_blocked_simd_ikj       : 0.022030 sec (6.13x)
+matrix_size,512,512,512,single,ikj,1,1,1,32,10,0.022030,6.130573,single_blocked_simd_ikj
+pthread_plain_simd_ikj        : 0.004356 sec (31.01x)
+matrix_size,512,512,512,pthread,ikj,0,1,4,1,10,0.004356,31.005364,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.005678 sec (23.79x)
+matrix_size,512,512,512,pthread,ikj,1,1,4,32,10,0.005678,23.787683,pthread_blocked_simd_ikj
+
+[benchmark] matrix_size: A=1024x1024, B=1024x1024, iterations=10
+-----------------------------------------------------
+single_plain_sisd_ijk         : 3.467832 sec (1.00x)
+matrix_size,1024,1024,1024,single,ijk,0,0,1,1,10,3.467832,1.000000,single_plain_sisd_ijk
+pthread_plain_sisd_ijk        : 1.089742 sec (3.18x)
+matrix_size,1024,1024,1024,pthread,ijk,0,0,4,1,10,1.089742,3.182252,pthread_plain_sisd_ijk
+single_blocked_sisd_ijk       : 0.798629 sec (4.34x)
+matrix_size,1024,1024,1024,single,ijk,1,0,1,32,10,0.798629,4.342234,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.173628 sec (19.97x)
+matrix_size,1024,1024,1024,pthread,ijk,1,0,4,32,10,0.173628,19.972786,pthread_blocked_sisd_ijk
+single_plain_simd_ikj         : 0.146391 sec (23.69x)
+matrix_size,1024,1024,1024,single,ikj,0,1,1,1,10,0.146391,23.688905,single_plain_simd_ikj
+single_blocked_simd_ikj       : 0.177117 sec (19.58x)
+matrix_size,1024,1024,1024,single,ikj,1,1,1,32,10,0.177117,19.579317,single_blocked_simd_ikj
+pthread_plain_simd_ikj        : 0.037042 sec (93.62x)
+matrix_size,1024,1024,1024,pthread,ikj,0,1,4,1,10,0.037042,93.619165,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.044954 sec (77.14x)
+matrix_size,1024,1024,1024,pthread,ikj,1,1,4,32,10,0.044954,77.141683,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.140458 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,1,1,10,0.140458,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.048156 sec (2.92x)
+thread_count,512,512,512,pthread,ijk,1,0,1,32,10,0.048156,2.916689,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.017126 sec (8.20x)
+thread_count,512,512,512,pthread,ikj,0,1,1,1,10,0.017126,8.201437,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.021994 sec (6.39x)
+thread_count,512,512,512,pthread,ikj,1,1,1,32,10,0.021994,6.386141,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.070256 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,2,1,10,0.070256,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.024272 sec (2.89x)
+thread_count,512,512,512,pthread,ijk,1,0,2,32,10,0.024272,2.894552,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.008446 sec (8.32x)
+thread_count,512,512,512,pthread,ikj,0,1,2,1,10,0.008446,8.318335,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.010939 sec (6.42x)
+thread_count,512,512,512,pthread,ikj,1,1,2,32,10,0.010939,6.422847,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.046558 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,3,1,10,0.046558,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.016311 sec (2.85x)
+thread_count,512,512,512,pthread,ijk,1,0,3,32,10,0.016311,2.854316,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.005729 sec (8.13x)
+thread_count,512,512,512,pthread,ikj,0,1,3,1,10,0.005729,8.126594,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.007412 sec (6.28x)
+thread_count,512,512,512,pthread,ikj,1,1,3,32,10,0.007412,6.281459,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.035261 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,4,1,10,0.035261,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.012293 sec (2.87x)
+thread_count,512,512,512,pthread,ijk,1,0,4,32,10,0.012293,2.868388,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.004357 sec (8.09x)
+thread_count,512,512,512,pthread,ikj,0,1,4,1,10,0.004357,8.093884,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.005537 sec (6.37x)
+thread_count,512,512,512,pthread,ikj,1,1,4,32,10,0.005537,6.368081,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.028248 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,5,1,10,0.028248,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.009712 sec (2.91x)
+thread_count,512,512,512,pthread,ijk,1,0,5,32,10,0.009712,2.908495,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.003435 sec (8.22x)
+thread_count,512,512,512,pthread,ikj,0,1,5,1,10,0.003435,8.222284,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.004453 sec (6.34x)
+thread_count,512,512,512,pthread,ikj,1,1,5,32,10,0.004453,6.344087,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.023473 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,6,1,10,0.023473,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.008167 sec (2.87x)
+thread_count,512,512,512,pthread,ijk,1,0,6,32,10,0.008167,2.874121,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.002985 sec (7.86x)
+thread_count,512,512,512,pthread,ikj,0,1,6,1,10,0.002985,7.862716,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.003726 sec (6.30x)
+thread_count,512,512,512,pthread,ikj,1,1,6,32,10,0.003726,6.298976,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.020327 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,7,1,10,0.020327,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.007041 sec (2.89x)
+thread_count,512,512,512,pthread,ijk,1,0,7,32,10,0.007041,2.887149,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.002533 sec (8.02x)
+thread_count,512,512,512,pthread,ikj,0,1,7,1,10,0.002533,8.024991,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.003246 sec (6.26x)
+thread_count,512,512,512,pthread,ikj,1,1,7,32,10,0.003246,6.262947,pthread_blocked_simd_ikj
+
+[benchmark] thread_count: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+pthread_plain_sisd_ijk        : 0.017688 sec (1.00x)
+thread_count,512,512,512,pthread,ijk,0,0,8,1,10,0.017688,1.000000,pthread_plain_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.006181 sec (2.86x)
+thread_count,512,512,512,pthread,ijk,1,0,8,32,10,0.006181,2.861457,pthread_blocked_sisd_ijk
+pthread_plain_simd_ikj        : 0.002259 sec (7.83x)
+thread_count,512,512,512,pthread,ikj,0,1,8,1,10,0.002259,7.831627,pthread_plain_simd_ikj
+pthread_blocked_simd_ikj      : 0.002877 sec (6.15x)
+thread_count,512,512,512,pthread,ikj,1,1,8,32,10,0.002877,6.147071,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.108205 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,2,10,0.108205,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.027280 sec (3.97x)
+block_size,512,512,512,pthread,ijk,1,0,4,2,10,0.027280,3.966513,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.143224 sec (0.76x)
+block_size,512,512,512,single,ikj,1,0,1,2,10,0.143224,0.755494,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.036220 sec (2.99x)
+block_size,512,512,512,pthread,ikj,1,0,4,2,10,0.036220,2.987431,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.129179 sec (0.84x)
+block_size,512,512,512,single,ikj,1,1,1,2,10,0.129179,0.837639,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.033090 sec (3.27x)
+block_size,512,512,512,pthread,ikj,1,1,4,2,10,0.033090,3.269973,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.050757 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,4,10,0.050757,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.012745 sec (3.98x)
+block_size,512,512,512,pthread,ijk,1,0,4,4,10,0.012745,3.982639,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.053597 sec (0.95x)
+block_size,512,512,512,single,ikj,1,0,1,4,10,0.053597,0.947011,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.013178 sec (3.85x)
+block_size,512,512,512,pthread,ikj,1,0,4,4,10,0.013178,3.851784,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.038064 sec (1.33x)
+block_size,512,512,512,single,ikj,1,1,1,4,10,0.038064,1.333479,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.009713 sec (5.23x)
+block_size,512,512,512,pthread,ikj,1,1,4,4,10,0.009713,5.225705,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.036092 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,8,10,0.036092,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.009042 sec (3.99x)
+block_size,512,512,512,pthread,ijk,1,0,4,8,10,0.009042,3.991786,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.026121 sec (1.38x)
+block_size,512,512,512,single,ikj,1,0,1,8,10,0.026121,1.381720,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.006498 sec (5.55x)
+block_size,512,512,512,pthread,ikj,1,0,4,8,10,0.006498,5.553923,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.032199 sec (1.12x)
+block_size,512,512,512,single,ikj,1,1,1,8,10,0.032199,1.120918,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.008157 sec (4.42x)
+block_size,512,512,512,pthread,ikj,1,1,4,8,10,0.008157,4.424907,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.030524 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,16,10,0.030524,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.007837 sec (3.89x)
+block_size,512,512,512,pthread,ijk,1,0,4,16,10,0.007837,3.894830,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.017738 sec (1.72x)
+block_size,512,512,512,single,ikj,1,0,1,16,10,0.017738,1.720847,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.004465 sec (6.84x)
+block_size,512,512,512,pthread,ikj,1,0,4,16,10,0.004465,6.836934,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.023823 sec (1.28x)
+block_size,512,512,512,single,ikj,1,1,1,16,10,0.023823,1.281288,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.006108 sec (5.00x)
+block_size,512,512,512,pthread,ikj,1,1,4,16,10,0.006108,4.997658,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.047746 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,32,10,0.047746,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.012292 sec (3.88x)
+block_size,512,512,512,pthread,ijk,1,0,4,32,10,0.012292,3.884491,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.013210 sec (3.61x)
+block_size,512,512,512,single,ikj,1,0,1,32,10,0.013210,3.614432,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.003439 sec (13.88x)
+block_size,512,512,512,pthread,ikj,1,0,4,32,10,0.003439,13.884494,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.021762 sec (2.19x)
+block_size,512,512,512,single,ikj,1,1,1,32,10,0.021762,2.194026,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.005602 sec (8.52x)
+block_size,512,512,512,pthread,ikj,1,1,4,32,10,0.005602,8.523099,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.103476 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,64,10,0.103476,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.026471 sec (3.91x)
+block_size,512,512,512,pthread,ijk,1,0,4,64,10,0.026471,3.909032,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.010157 sec (10.19x)
+block_size,512,512,512,single,ikj,1,0,1,64,10,0.010157,10.187669,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.002602 sec (39.77x)
+block_size,512,512,512,pthread,ikj,1,0,4,64,10,0.002602,39.768177,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.018777 sec (5.51x)
+block_size,512,512,512,single,ikj,1,1,1,64,10,0.018777,5.510643,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.004862 sec (21.28x)
+block_size,512,512,512,pthread,ikj,1,1,4,64,10,0.004862,21.282303,pthread_blocked_simd_ikj
+
+[benchmark] block_size: A=512x512, B=512x512, iterations=10
+-----------------------------------------------------
+single_blocked_sisd_ijk       : 0.123963 sec (1.00x)
+block_size,512,512,512,single,ijk,1,0,1,128,10,0.123963,1.000000,single_blocked_sisd_ijk
+pthread_blocked_sisd_ijk      : 0.031555 sec (3.93x)
+block_size,512,512,512,pthread,ijk,1,0,4,128,10,0.031555,3.928467,pthread_blocked_sisd_ijk
+single_blocked_sisd_ikj       : 0.008790 sec (14.10x)
+block_size,512,512,512,single,ikj,1,0,1,128,10,0.008790,14.102704,single_blocked_sisd_ikj
+pthread_blocked_sisd_ikj      : 0.002225 sec (55.72x)
+block_size,512,512,512,pthread,ikj,1,0,4,128,10,0.002225,55.724613,pthread_blocked_sisd_ikj
+single_blocked_simd_ikj       : 0.017550 sec (7.06x)
+block_size,512,512,512,single,ikj,1,1,1,128,10,0.017550,7.063614,single_blocked_simd_ikj
+pthread_blocked_simd_ikj      : 0.004618 sec (26.85x)
+block_size,512,512,512,pthread,ikj,1,1,4,128,10,0.004618,26.845927,pthread_blocked_simd_ikj

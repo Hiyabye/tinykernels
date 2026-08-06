@@ -1,8 +1,8 @@
-#include "bench_matmul.h"
-#include "gguf.h"
-#include "qwen.h"
-#include "qwen_tokenizer.h"
-#include "test_matmul.h"
+#include "tk_bench.h"
+#include "tk_gguf.h"
+#include "tk_model.h"
+#include "tk_test.h"
+#include "tk_tokenizer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +13,7 @@
 static void print_usage(const char *program) { fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>]\n", program); }
 
 static int run_tokenizer_cmd(int argc, char **argv) {
-  QwenTokenizer *tz = qwen_tokenizer_load(QWEN_DEFAULT_GGUF);
+  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
   if (!tz) {
     fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
     return 1;
@@ -27,7 +27,7 @@ static int run_tokenizer_cmd(int argc, char **argv) {
       goto out;
     }
     uint32_t *ids = NULL;
-    size_t n = qwen_tokenize(tz, argv[2], &ids);
+    size_t n = tk_tokenize(tz, argv[2], &ids);
     for (size_t i = 0; i < n; i++) printf("%s%u", i ? " " : "", ids[i]);
     printf("\n");
     free(ids);
@@ -40,19 +40,19 @@ static int run_tokenizer_cmd(int argc, char **argv) {
     size_t n = (size_t)(argc - 2);
     uint32_t *ids = malloc(n * sizeof(uint32_t));
     for (size_t i = 0; i < n; i++) ids[i] = (uint32_t)strtoul(argv[i + 2], NULL, 10);
-    char *text = qwen_detokenize(tz, ids, n);
+    char *text = tk_detokenize(tz, ids, n);
     printf("%s\n", text);
     free(text);
     free(ids);
   }
 
 out:
-  qwen_tokenizer_free(tz);
+  tk_tokenizer_close(tz);
   return rc;
 }
 
-static int check_tensor(const GGUFContext *ctx, const char *name, size_t want_nelems) {
-  const GGUFTensor *t = gguf_tensor_by_name(ctx, name);
+static int check_tensor(const TkGguf *ctx, const char *name, size_t want_nelems) {
+  const TkGgufTensor *t = tk_gguf_tensor_named(ctx, name);
   if (!t) {
     fprintf(stderr, "  FAIL missing tensor %s\n", name);
     return 0;
@@ -65,17 +65,17 @@ static int check_tensor(const GGUFContext *ctx, const char *name, size_t want_ne
 }
 
 static int run_model_cmd(const char *path) {
-  GGUFContext *ctx = gguf_open(path);
+  TkGguf *ctx = tk_gguf_open(path);
   if (!ctx) {
     fprintf(stderr, "error: failed to load GGUF from %s\n", path);
     return 1;
   }
 
-  QwenConfig cfg = qwen_config_from_gguf(ctx);
-  qwen_config_print(&cfg);
+  TkModel cfg = tk_model_from_gguf(ctx);
+  tk_model_print(&cfg);
 
   /* Validate the full tensor inventory against the derived config. */
-  printf("\ntensor inventory: %zu tensors in file\n", gguf_tensor_count(ctx));
+  printf("\ntensor inventory: %zu tensors in file\n", tk_gguf_tensor_count(ctx));
   int ok = 1;
   ok &= check_tensor(ctx, "token_embd.weight", cfg.vocab_size * cfg.hidden_size);
   ok &= check_tensor(ctx, "output_norm.weight", cfg.hidden_size);
@@ -110,9 +110,9 @@ static int run_model_cmd(const char *path) {
 
   /* Spot-check dequantized weight values (F32 embedding + one Q8_0 block). */
   float v0, vq;
-  int d0 = gguf_read_tensor(ctx, "token_embd.weight", &v0, 0, 1);
-  int dq = gguf_read_tensor(ctx, "blk.0.attn_q.weight", &vq, 0, 1);
-  if (d0 == 0 && dq == 0 && ok) {
+  tk_status d0 = tk_gguf_read(ctx, "token_embd.weight", &v0, 0, 1);
+  tk_status dq = tk_gguf_read(ctx, "blk.0.attn_q.weight", &vq, 0, 1);
+  if (d0 == TK_OK && dq == TK_OK && ok) {
     printf("\nvalidated OK\n");
     printf("spot-check token_embd.weight[0] = %.9g\n", v0);
     printf("spot-check blk.0.attn_q.weight[0] (Q8_0) = %.9g\n", vq);
@@ -120,16 +120,15 @@ static int run_model_cmd(const char *path) {
     fprintf(stderr, "\nvalidation FAILED (dequant d0=%d dq=%d)\n", d0, dq);
   }
 
-  gguf_close(ctx);
-  return (d0 == 0 && dq == 0 && ok) ? 0 : 1;
+  tk_gguf_close(ctx);
+  return (d0 == TK_OK && dq == TK_OK && ok) ? 0 : 1;
 }
 
 static int run_tests(void) {
-  if (!test_matmul_correctness()) {
-    fprintf(stderr, "correctness tests failed\n");
+  if (tk_test_all() != 0) {
+    fprintf(stderr, "tests failed\n");
     return 1;
   }
-
   return 0;
 }
 
@@ -146,13 +145,13 @@ int main(int argc, char **argv) {
   if (strcmp(mode, "test") == 0) return run_tests();
 
   if (strcmp(mode, "bench") == 0) {
-    bench_run_default_suite("results/data/benchmark_results.csv");
+    tk_bench_default_suite("results/data/benchmark_results.csv");
     return 0;
   }
 
   if (strcmp(mode, "all") == 0) {
     if (run_tests() != 0) return 1;
-    bench_run_default_suite("results/data/benchmark_results.csv");
+    tk_bench_default_suite("results/data/benchmark_results.csv");
     return 0;
   }
 

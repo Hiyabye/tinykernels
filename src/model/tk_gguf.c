@@ -1,5 +1,7 @@
-#include "gguf.h"
+#include "tk_gguf.h"
+#include "tk_common.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,25 +35,24 @@ typedef struct {
 
 enum { M_STR, M_INT, M_FLT, M_BOOL };
 
-struct GGUFContext {
+struct TkGguf {
   FILE *fp;
   uint64_t tensor_data_start; /* byte offset of tensor_data in the file */
 
   MetaKV *meta;
   size_t n_meta;
 
-  GGUFTensor *tensors;
+  TkGgufTensor *tensors;
   size_t n_tensors;
 };
 
 /* Reads a length-prefixed GGUF string. Returns malloc'd NUL-terminated string
- * or NULL on EOF/allocation failure. */
+ * or NULL on EOF. */
 static char *read_str(FILE *fp) {
   uint8_t lb[8];
   if (fread(lb, 1, 8, fp) != 8) return NULL;
   uint64_t n = le_u64(lb);
-  char *s = malloc(n + 1);
-  if (!s) return NULL;
+  char *s = tk_xmalloc(n + 1);
   if (fread(s, 1, n, fp) != n) {
     free(s);
     return NULL;
@@ -60,13 +61,8 @@ static char *read_str(FILE *fp) {
   return s;
 }
 
-static int meta_put_retry(struct GGUFContext *ctx, MetaKV *m) {
-  MetaKV *nm = realloc(ctx->meta, (ctx->n_meta + 1) * sizeof(*ctx->meta));
-  if (!nm) {
-    free(m->key);
-    return 0;
-  }
-  ctx->meta = nm;
+static int meta_put_retry(struct TkGguf *ctx, MetaKV *m) {
+  ctx->meta = tk_xrealloc(ctx->meta, (ctx->n_meta + 1) * sizeof(*ctx->meta));
   ctx->meta[ctx->n_meta++] = *m;
   return 1;
 }
@@ -118,7 +114,7 @@ static double read_float_le(FILE *fp, size_t bytes) {
   return d;
 }
 
-static bool parse_metadata(struct GGUFContext *ctx, uint64_t n_kv) {
+static bool parse_metadata(struct TkGguf *ctx, uint64_t n_kv) {
   for (uint64_t k = 0; k < n_kv; k++) {
     char *key = read_str(ctx->fp);
     if (!key) return false;
@@ -140,11 +136,7 @@ static bool parse_metadata(struct GGUFContext *ctx, uint64_t n_kv) {
       uint64_t cnt = le_u64(arr + 4);
 
       if (et == 8) { /* string array */
-        char **strs = malloc((size_t)cnt * sizeof(char *));
-        if (!strs) {
-          free(key);
-          return false;
-        }
+        char **strs = tk_xmalloc((size_t)cnt * sizeof(char *));
         bool ok = true;
         for (uint64_t c = 0; c < cnt; c++) {
           strs[c] = read_str(ctx->fp);
@@ -161,11 +153,7 @@ static bool parse_metadata(struct GGUFContext *ctx, uint64_t n_kv) {
         MetaKV m = {.key = key, .kind = M_STR, .et = 8, .n = cnt, .strs = strs};
         if (!meta_put_retry(ctx, &m)) return false;
       } else if (et == 5 || et == 4) { /* int32/uint32 array */
-        int32_t *arr2 = malloc((size_t)cnt * sizeof(int32_t));
-        if (!arr2) {
-          free(key);
-          return false;
-        }
+        int32_t *arr2 = tk_xmalloc((size_t)cnt * sizeof(int32_t));
         if (fread(arr2, 4, (size_t)cnt, ctx->fp) != (size_t)cnt) {
           free(arr2);
           free(key);
@@ -221,21 +209,20 @@ static bool parse_metadata(struct GGUFContext *ctx, uint64_t n_kv) {
   return true;
 }
 
-static bool parse_tensor_infos(struct GGUFContext *ctx, uint64_t n_tensors) {
-  ctx->tensors = malloc((size_t)n_tensors * sizeof(GGUFTensor));
-  if (!ctx->tensors) return false;
+static bool parse_tensor_infos(struct TkGguf *ctx, uint64_t n_tensors) {
+  ctx->tensors = tk_xmalloc((size_t)n_tensors * sizeof(TkGgufTensor));
   ctx->n_tensors = (size_t)n_tensors;
 
   for (uint64_t t = 0; t < n_tensors; t++) {
-    GGUFTensor *ti = &ctx->tensors[t];
+    TkGgufTensor *ti = &ctx->tensors[t];
     memset(ti, 0, sizeof(*ti));
     ti->name = read_str(ctx->fp);
     if (!ti->name) return false;
 
     uint8_t ndb[4];
-    if (fread(ndb, 1, 4, ctx->fp) != 4 || (ti->n_dims = le_u32(ndb)) > GGUF_MAX_DIMS) return false;
+    if (fread(ndb, 1, 4, ctx->fp) != 4 || (ti->n_dims = le_u32(ndb)) > TK_GGUF_MAX_DIMS) return false;
 
-    uint8_t dimb[8 * GGUF_MAX_DIMS];
+    uint8_t dimb[8 * TK_GGUF_MAX_DIMS];
     if (fread(dimb, 8, ti->n_dims, ctx->fp) != ti->n_dims) return false;
     ti->n_elems = 1;
     for (uint8_t d = 0; d < ti->n_dims; d++) {
@@ -251,46 +238,48 @@ static bool parse_tensor_infos(struct GGUFContext *ctx, uint64_t n_tensors) {
   return true;
 }
 
-static const MetaKV *meta_find(const GGUFContext *ctx, const char *key) {
+static const MetaKV *meta_find(const TkGguf *ctx, const char *key) {
   for (size_t i = 0; i < ctx->n_meta; i++)
     if (strcmp(ctx->meta[i].key, key) == 0) return &ctx->meta[i];
   return NULL;
 }
 
-GGUFContext *gguf_open(const char *path) {
+TkGguf *tk_gguf_open(const char *path) {
   FILE *fp = fopen(path, "rb");
-  if (!fp) return NULL;
+  if (!fp) {
+    TK_LOGE("cannot open GGUF file '%s': %s", path, strerror(errno));
+    return NULL;
+  }
 
   uint8_t hdr[24];
   if (fread(hdr, 1, 24, fp) != 24 || memcmp(hdr, "GGUF", 4) != 0) {
+    TK_LOGE("not a valid GGUF file: '%s'", path);
     fclose(fp);
     return NULL;
   }
   uint64_t n_tensors = (uint64_t)le_u64(hdr + 8);
   uint64_t n_kv = (uint64_t)le_u64(hdr + 16);
 
-  GGUFContext *ctx = calloc(1, sizeof(*ctx));
-  if (!ctx) {
-    fclose(fp);
-    return NULL;
-  }
+  TkGguf *ctx = tk_xcalloc(1, sizeof(*ctx));
   ctx->fp = fp;
 
   if (!parse_metadata(ctx, n_kv) || !parse_tensor_infos(ctx, n_tensors)) {
-    gguf_close(ctx);
+    TK_LOGE("malformed GGUF metadata/tensor info in '%s'", path);
+    tk_gguf_close(ctx);
     return NULL;
   }
 
   long pos = ftell(ctx->fp);
   if (pos < 0) {
-    gguf_close(ctx);
+    TK_LOGE("failed to read GGUF position in '%s'", path);
+    tk_gguf_close(ctx);
     return NULL;
   }
   ctx->tensor_data_start = (uint64_t)align_up((size_t)pos, GGUF_ALIGNMENT);
   return ctx;
 }
 
-void gguf_close(GGUFContext *ctx) {
+void tk_gguf_close(TkGguf *ctx) {
   if (!ctx) return;
   if (ctx->fp) fclose(ctx->fp);
   for (size_t i = 0; i < ctx->n_meta; i++) {
@@ -311,72 +300,56 @@ void gguf_close(GGUFContext *ctx) {
 
 /* ---------------- metadata accessors ---------------- */
 
-const char *gguf_get_string(const GGUFContext *ctx, const char *key) {
+const char *tk_gguf_str(const TkGguf *ctx, const char *key) {
   const MetaKV *m = meta_find(ctx, key);
   return (m && m->kind == M_STR && m->s) ? m->s : NULL;
 }
 
-int64_t gguf_get_int(const GGUFContext *ctx, const char *key, int64_t dflt) {
+int64_t tk_gguf_i64(const TkGguf *ctx, const char *key, int64_t dflt) {
   const MetaKV *m = meta_find(ctx, key);
   return (m && m->kind == M_INT && !m->strs) ? m->i : dflt;
 }
 
-double gguf_get_float(const GGUFContext *ctx, const char *key, double dflt) {
+double tk_gguf_f64(const TkGguf *ctx, const char *key, double dflt) {
   const MetaKV *m = meta_find(ctx, key);
   return (m && m->kind == M_FLT) ? m->f : dflt;
 }
 
-bool gguf_get_bool(const GGUFContext *ctx, const char *key, bool dflt) {
+bool tk_gguf_bool(const TkGguf *ctx, const char *key, bool dflt) {
   const MetaKV *m = meta_find(ctx, key);
   return (m && m->kind == M_BOOL) ? m->b : dflt;
 }
 
-static char *str_dup(const char *s) {
-  size_t n = strlen(s) + 1;
-  char *c = malloc(n);
-  if (c) memcpy(c, s, n);
-  return c;
-}
-
-size_t gguf_get_string_array(const GGUFContext *ctx, const char *key, char ***out) {
+size_t tk_gguf_str_array(const TkGguf *ctx, const char *key, char ***out) {
   const MetaKV *m = meta_find(ctx, key);
   if (!m || m->kind != M_STR || !m->strs || m->et != 8) return 0;
-  char **copy = malloc((size_t)m->n * sizeof(char *));
-  if (!copy) return 0;
-  for (uint64_t i = 0; i < m->n; i++) {
-    copy[i] = str_dup(m->strs[i]);
-    if (!copy[i]) {
-      for (uint64_t j = 0; j < i; j++) free(copy[j]);
-      free(copy);
-      return 0;
-    }
-  }
+  char **copy = tk_xmalloc((size_t)m->n * sizeof(char *));
+  for (uint64_t i = 0; i < m->n; i++) copy[i] = tk_xstrdup(m->strs[i]);
   *out = copy;
   return (size_t)m->n;
 }
 
-size_t gguf_get_i32_array(const GGUFContext *ctx, const char *key, int32_t **out) {
+size_t tk_gguf_i32_array(const TkGguf *ctx, const char *key, int32_t **out) {
   const MetaKV *m = meta_find(ctx, key);
   if (!m || m->kind != M_INT || !m->i32 || m->et != 5) return 0;
-  int32_t *copy = malloc((size_t)m->n * sizeof(int32_t));
-  if (!copy) return 0;
+  int32_t *copy = tk_xmalloc((size_t)m->n * sizeof(int32_t));
   memcpy(copy, m->i32, (size_t)m->n * sizeof(int32_t));
   *out = copy;
   return (size_t)m->n;
 }
 
-size_t gguf_array_length(const GGUFContext *ctx, const char *key) {
+size_t tk_gguf_array_len(const TkGguf *ctx, const char *key) {
   const MetaKV *m = meta_find(ctx, key);
   return (m && m->strs) ? (size_t)m->n : 0;
 }
 
 /* ---------------- tensors ---------------- */
 
-size_t gguf_tensor_count(const GGUFContext *ctx) { return ctx->n_tensors; }
+size_t tk_gguf_tensor_count(const TkGguf *ctx) { return ctx->n_tensors; }
 
-const GGUFTensor *gguf_tensor_by_index(const GGUFContext *ctx, size_t i) { return i < ctx->n_tensors ? &ctx->tensors[i] : NULL; }
+const TkGgufTensor *tk_gguf_tensor_index(const TkGguf *ctx, size_t i) { return i < ctx->n_tensors ? &ctx->tensors[i] : NULL; }
 
-const GGUFTensor *gguf_tensor_by_name(const GGUFContext *ctx, const char *name) {
+const TkGgufTensor *tk_gguf_tensor_named(const TkGguf *ctx, const char *name) {
   for (size_t i = 0; i < ctx->n_tensors; i++)
     if (strcmp(ctx->tensors[i].name, name) == 0) return &ctx->tensors[i];
   return NULL;
@@ -422,15 +395,27 @@ static void dequant_q8_0_block(FILE *fp, long pos, float *y) {
   for (int i = 0; i < 32; i++) y[i] = d * (int8_t)b[2 + i];
 }
 
-int gguf_read_tensor(const GGUFContext *ctx, const char *name, float *dst, size_t i0, size_t n) {
-  const GGUFTensor *ti = gguf_tensor_by_name(ctx, name);
-  if (!ti) return -1;
-  if (i0 + n > ti->n_elems) return -1;
+tk_status tk_gguf_read(const TkGguf *ctx, const char *name, float *dst, size_t i0, size_t n) {
+  const TkGgufTensor *ti = tk_gguf_tensor_named(ctx, name);
+  if (!ti) {
+    TK_LOGE("unknown tensor '%s'", name);
+    return TK_ERR_ARG;
+  }
+  if (i0 + n > ti->n_elems) {
+    TK_LOGE("tensor '%s' range [%zu,%zu) exceeds %llu elements", name, i0, i0 + n, (unsigned long long)ti->n_elems);
+    return TK_ERR_ARG;
+  }
 
   if (ti->type == 0) { /* F32 */
-    if (fseek(ctx->fp, (long)(ctx->tensor_data_start + ti->offset + i0 * 4), SEEK_SET) != 0) return -1;
-    if (fread(dst, 4, n, ctx->fp) != n) return -1;
-    return 0;
+    if (fseek(ctx->fp, (long)(ctx->tensor_data_start + ti->offset + i0 * 4), SEEK_SET) != 0) {
+      TK_LOGE("tensor '%s' seek failed", name);
+      return TK_ERR_IO;
+    }
+    if (fread(dst, 4, n, ctx->fp) != n) {
+      TK_LOGE("tensor '%s' read failed", name);
+      return TK_ERR_IO;
+    }
+    return TK_OK;
   }
 
   if (ti->type == 8) { /* Q8_0 */
@@ -446,8 +431,9 @@ int gguf_read_tensor(const GGUFContext *ctx, const char *name, float *dst, size_
       memcpy(dst + done, block + within, take * sizeof(float));
       done += take;
     }
-    return 0;
+    return TK_OK;
   }
 
-  return -1; /* unsupported quant type */
+  TK_LOGE("tensor '%s' has unsupported quant type %u", name, ti->type);
+  return TK_ERR_UNSUPPORTED;
 }

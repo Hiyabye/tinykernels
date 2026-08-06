@@ -1,10 +1,10 @@
-#ifndef QWEN_H
-#define QWEN_H
+#ifndef TK_MODEL_H
+#define TK_MODEL_H
 
 #include <stdbool.h>
 #include <stddef.h>
 
-struct GGUFContext;
+struct TkGguf;
 
 typedef struct {
   size_t hidden_size;
@@ -20,11 +20,11 @@ typedef struct {
   bool tie_word_embeddings;
   size_t bos_token_id;
   size_t eos_token_id;
-} QwenConfig;
+} TkModel;
 
-QwenConfig qwen_config_qwen3_0_6b(void);
-QwenConfig qwen_config_from_gguf(const struct GGUFContext *gguf);
-size_t qwen_config_param_count(const QwenConfig *config);
-void qwen_config_print(const QwenConfig *config);
+TkModel tk_model_qwen3_0_6b(void);
+TkModel tk_model_from_gguf(const struct TkGguf *gguf);
+size_t tk_model_param_count(const TkModel *config);
+void tk_model_print(const TkModel *config);
 
-#endif // QWEN_H
+#endif /* TK_MODEL_H */

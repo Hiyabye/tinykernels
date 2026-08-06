@@ -1,5 +1,4 @@
-#include "kernels.h"
-#include "matrix.h"
+#include "tk_kernels.h"
 
 #if defined(__SSE__)
 #include <xmmintrin.h>
@@ -7,7 +6,7 @@
 
 #include <stddef.h>
 
-void matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end) {
+void tk_kernel_ikj_simd(const TkMatrix *lhs, const TkMatrix *rhs, TkMatrix *out, size_t row_start, size_t row_end) {
 #if defined(__SSE__)
 
   for (size_t row = row_start; row < row_end; ++row) {
@@ -35,17 +34,17 @@ void matmul_range_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, si
 #endif
 }
 
-void matmul_range_blocked_simd_ikj(const Matrix *lhs, const Matrix *rhs, Matrix *out, size_t row_start, size_t row_end, size_t block_size) {
+void tk_kernel_ikj_blocked_simd(const TkMatrix *lhs, const TkMatrix *rhs, TkMatrix *out, size_t row_start, size_t row_end, size_t block_size) {
 #if defined(__SSE__)
 
   for (size_t row0 = row_start; row0 < row_end; row0 += block_size) {
-    size_t row1 = min_size(row0 + block_size, row_end);
+    size_t row1 = tk_min(row0 + block_size, row_end);
 
     for (size_t inner0 = 0; inner0 < lhs->cols; inner0 += block_size) {
-      size_t inner1 = min_size(inner0 + block_size, lhs->cols);
+      size_t inner1 = tk_min(inner0 + block_size, lhs->cols);
 
       for (size_t col0 = 0; col0 < rhs->cols; col0 += block_size) {
-        size_t col1 = min_size(col0 + block_size, rhs->cols);
+        size_t col1 = tk_min(col0 + block_size, rhs->cols);
 
         for (size_t row = row0; row < row1; ++row) {
           for (size_t inner = inner0; inner < inner1; ++inner) {

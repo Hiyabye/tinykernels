@@ -1,11 +1,10 @@
-#include "qwen.h"
-#include "gguf.h"
+#include "tk_model.h"
+#include "tk_gguf.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 
-QwenConfig qwen_config_qwen3_0_6b(void) {
-  return (QwenConfig){
+TkModel tk_model_qwen3_0_6b(void) {
+  return (TkModel){
       .hidden_size = 1024,
       .num_layers = 28,
       .num_attention_heads = 16,
@@ -22,26 +21,26 @@ QwenConfig qwen_config_qwen3_0_6b(void) {
   };
 }
 
-QwenConfig qwen_config_from_gguf(const struct GGUFContext *g) {
-  QwenConfig c = {0};
-  size_t vocab = gguf_array_length(g, "tokenizer.ggml.tokens");
-  c.hidden_size = (size_t)gguf_get_int(g, "qwen3.embedding_length", 1024);
-  c.num_layers = (size_t)gguf_get_int(g, "qwen3.block_count", 28);
-  c.num_attention_heads = (size_t)gguf_get_int(g, "qwen3.attention.head_count", 16);
-  c.num_kv_heads = (size_t)gguf_get_int(g, "qwen3.attention.head_count_kv", 8);
-  c.head_dim = (size_t)gguf_get_int(g, "qwen3.attention.key_length", c.hidden_size / c.num_attention_heads);
-  c.intermediate_size = (size_t)gguf_get_int(g, "qwen3.feed_forward_length", 3072);
+TkModel tk_model_from_gguf(const struct TkGguf *g) {
+  TkModel c = {0};
+  size_t vocab = tk_gguf_array_len(g, "tokenizer.ggml.tokens");
+  c.hidden_size = (size_t)tk_gguf_i64(g, "qwen3.embedding_length", 1024);
+  c.num_layers = (size_t)tk_gguf_i64(g, "qwen3.block_count", 28);
+  c.num_attention_heads = (size_t)tk_gguf_i64(g, "qwen3.attention.head_count", 16);
+  c.num_kv_heads = (size_t)tk_gguf_i64(g, "qwen3.attention.head_count_kv", 8);
+  c.head_dim = (size_t)tk_gguf_i64(g, "qwen3.attention.key_length", c.hidden_size / c.num_attention_heads);
+  c.intermediate_size = (size_t)tk_gguf_i64(g, "qwen3.feed_forward_length", 3072);
   c.vocab_size = vocab;
-  c.max_position_embeddings = (size_t)gguf_get_int(g, "qwen3.context_length", 40960);
-  c.rms_norm_eps = (float)gguf_get_float(g, "qwen3.attention.layer_norm_rms_epsilon", 1e-6);
-  c.rope_theta = (float)gguf_get_float(g, "qwen3.rope.freq_base", 1000000.0);
+  c.max_position_embeddings = (size_t)tk_gguf_i64(g, "qwen3.context_length", 40960);
+  c.rms_norm_eps = (float)tk_gguf_f64(g, "qwen3.attention.layer_norm_rms_epsilon", 1e-6);
+  c.rope_theta = (float)tk_gguf_f64(g, "qwen3.rope.freq_base", 1000000.0);
   c.tie_word_embeddings = true; /* Qwen3 GGUF omits output.weight; lm_head is tied */
-  c.bos_token_id = (size_t)gguf_get_int(g, "tokenizer.ggml.bos_token_id", 151643);
-  c.eos_token_id = (size_t)gguf_get_int(g, "tokenizer.ggml.eos_token_id", 151645);
+  c.bos_token_id = (size_t)tk_gguf_i64(g, "tokenizer.ggml.bos_token_id", 151643);
+  c.eos_token_id = (size_t)tk_gguf_i64(g, "tokenizer.ggml.eos_token_id", 151645);
   return c;
 }
 
-size_t qwen_config_param_count(const QwenConfig *c) {
+size_t tk_model_param_count(const TkModel *c) {
   size_t head_total = c->num_attention_heads * c->head_dim;      // Wq/Wo rows
   size_t kv_total = c->num_kv_heads * c->head_dim;               // Wk/Wv rows
   size_t per_layer = c->hidden_size * head_total                 // Wq
@@ -58,7 +57,7 @@ size_t qwen_config_param_count(const QwenConfig *c) {
   return total;
 }
 
-void qwen_config_print(const QwenConfig *c) {
+void tk_model_print(const TkModel *c) {
   printf("Qwen3-0.6B (Qwen3ForCausalLM, causal LM)\n");
   printf("  %-25s%zu\n", "hidden_size", c->hidden_size);
   printf("  %-25s%zu\n", "num_layers", c->num_layers);
@@ -73,5 +72,5 @@ void qwen_config_print(const QwenConfig *c) {
   printf("  %-25s%s\n", "tie_word_embeddings", c->tie_word_embeddings ? "true" : "false");
   printf("  %-25s%zu\n", "bos_token_id", c->bos_token_id);
   printf("  %-25s%zu\n", "eos_token_id", c->eos_token_id);
-  printf("  %-25s%zu (~0.60B)\n", "param_count", qwen_config_param_count(c));
+  printf("  %-25s%zu (~0.60B)\n", "param_count", tk_model_param_count(c));
 }

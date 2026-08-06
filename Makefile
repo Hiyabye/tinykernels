@@ -1,7 +1,10 @@
-CC ?= gcc
-CFLAGS ?= -O3 -march=native -Wall -Wextra -Wpedantic -std=c99
+CC       ?= gcc
+OPT      ?= -O3 -march=native
+WARN      = -Wall -Wextra -Wpedantic -Werror -Wshadow -Wformat=2 -Wstrict-prototypes \
+            -Wmissing-prototypes -Wwrite-strings -Wundef -Wpointer-arith
+CFLAGS   ?= $(OPT) $(WARN) -std=c99
 CPPFLAGS ?= -Iinclude
-LDLIBS ?= -pthread
+LDLIBS   ?= -pthread
 
 OPENMP ?= 0
 ifeq ($(OPENMP),1)
@@ -13,52 +16,47 @@ else
 endif
 
 TARGET := tinykernels
-SRC_DIR := src
-TEST_DIR := tests
-BENCH_DIR := results
-BUILD_DIR := build
-BENCH_DATA_DIR := results/data
-BENCH_PLOT_DIR := results/plots
-MPLCONFIGDIR ?= $(BUILD_DIR)/matplotlib
-
-SRCS := $(shell find $(SRC_DIR) -name '*.c' | sort)
-OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
+SRCS := $(shell find src -name '*.c' | sort)
+OBJS := $(patsubst %.c,build/%.o,$(SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all clean run test bench debug sanitize plots
+# matplotlib lives in the project venv when present; fall back to system python3.
+PYTHON := $(shell if [ -x .venv/bin/python3 ]; then echo .venv/bin/python3; else echo python3; fi)
+
+.PHONY: all clean test bench plots debug sanitize format
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-$(BUILD_DIR)/%.o: %.c
+build/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-run: $(TARGET)
-	./$(TARGET)
+clean:
+	rm -rf build $(TARGET)
 
 test: $(TARGET)
 	./$(TARGET) test
 
 bench: $(TARGET)
-	@mkdir -p $(BENCH_DATA_DIR) $(BENCH_PLOT_DIR)
+	@mkdir -p results/data results/plots build/matplotlib
 	./$(TARGET) bench
 	$(MAKE) plots
 
 plots:
-	@mkdir -p $(BENCH_PLOT_DIR) $(MPLCONFIGDIR)
-	MPLCONFIGDIR=$(MPLCONFIGDIR) python3 scripts/plot_benchmarks.py $(BENCH_DATA_DIR)/benchmark_results.csv $(BENCH_PLOT_DIR)
+	@mkdir -p results/plots build/matplotlib
+	MPLCONFIGDIR=build/matplotlib $(PYTHON) scripts/plot_benchmarks.py results/data/benchmark_results.csv results/plots
 
-debug: CFLAGS := -O0 -g3 -Wall -Wextra -Wpedantic -std=c99
+debug: CFLAGS := -O0 -g3 $(WARN) -std=c99
 debug: clean $(TARGET)
 
-sanitize: CFLAGS := -O1 -g3 -Wall -Wextra -Wpedantic -std=c99 -fsanitize=address,undefined
+sanitize: CFLAGS := -O1 -g3 $(WARN) -std=c99 -fsanitize=address,undefined -fno-omit-frame-pointer
 sanitize: LDFLAGS += -fsanitize=address,undefined
 sanitize: clean $(TARGET)
 
-clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+format:
+	clang-format -i $$(find src include -name '*.c' -o -name '*.h')
 
 -include $(DEPS)
