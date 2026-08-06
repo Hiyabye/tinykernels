@@ -1,4 +1,6 @@
+#include "tk_backend.h"
 #include "tk_bench.h"
+#include "tk_common.h"
 #include "tk_forward.h"
 #include "tk_generate.h"
 #include "tk_gguf.h"
@@ -14,8 +16,10 @@
 #define QWEN_DEFAULT_GGUF "Qwen3-0.6B-Q8_0.gguf"
 
 static void print_usage(const char *program) {
-  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>|generate <text> [options]]\n", program);
+  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>|generate <text> [options]|bench-infer]\n",
+          program);
   fprintf(stderr, "generate options: --seed N --temp T --top-k K --top-p P --n NT --think\n");
+  fprintf(stderr, "bench-infer options: --tokens N\n");
 }
 
 static int run_tokenizer_cmd(int argc, char **argv) {
@@ -311,6 +315,69 @@ out:
   return rc;
 }
 
+/* Time real autoregressive tokens (KV cache resident, weights cached once) under
+ * different GEMM configs, reporting ms/token and the speedup of the fast config
+ * vs the plain scalar baseline. Justifies the Phase 6 kernel choice. */
+static int run_bench_infer_cmd(int argc, char **argv) {
+  size_t tokens = 30;
+  for (int i = 2; i < argc; i++) {
+    if (i + 1 < argc && strcmp(argv[i], "--tokens") == 0) {
+      tokens = strtoull(argv[++i], NULL, 10);
+      continue;
+    }
+    fprintf(stderr, "usage: %s bench-infer [--tokens N]\n", argv[0]);
+    return 1;
+  }
+  if (tokens == 0) return 1;
+
+  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkGguf *gguf = NULL;
+  TkInfer *inf = NULL;
+  uint32_t *ids = NULL;
+  float *row = NULL;
+  tk_status s = TK_OK;
+  int rc = 1;
+  if (!tz) return 1;
+  if (!(gguf = tk_gguf_open(QWEN_DEFAULT_GGUF))) goto out;
+  TkModel cfg = tk_model_from_gguf(gguf);
+  size_t pn = tk_tokenize(tz, "The capital of France is", &ids);
+  if (!(inf = tk_infer_new(gguf, &cfg))) goto out;
+  row = tk_xmalloc(cfg.vocab_size * sizeof(float));
+
+  /* process the prompt, then warm up a couple of generated tokens */
+  for (size_t t = 0; t < pn && s == TK_OK; t++) s = tk_infer_step(inf, ids[t], row);
+  for (size_t g = 0; g < 2 && s == TK_OK; g++) s = tk_infer_step(inf, (uint32_t)cfg.bos_token_id, row);
+  if (s != TK_OK) goto out;
+
+  tk_matmul_cfg plain = tk_matmul_cfg_new(TK_BACKEND_SINGLE, TK_LOOP_IJK, false, false, 1, 64);
+  tk_matmul_cfg fast = tk_matmul_cfg_new(TK_BACKEND_SINGLE, TK_LOOP_IKJ, false, tk_sse_available(), 1, 64);
+  tk_matmul_cfg block = tk_matmul_cfg_new(TK_BACKEND_SINGLE, TK_LOOP_IKJ, true, tk_sse_available(), 1, 64);
+  const tk_matmul_cfg *cfgs[3] = {&plain, &block, &fast};
+  const char *names[3] = {"plain  (IJK scalar)   ", "blocked(IKJ simd)   ", "fast   (IKJ simd)   "};
+  double ms[3], tokps[3];
+
+  for (int c = 0; c < 3; c++) {
+    tk_infer_set_cfg(inf, cfgs[c]);
+    double t0 = tk_now_seconds();
+    for (size_t g = 0; g < tokens && s == TK_OK; g++) s = tk_infer_step(inf, (uint32_t)cfg.bos_token_id, row);
+    if (s != TK_OK) goto out;
+    double dt = tk_now_seconds() - t0;
+    ms[c] = dt / (double)tokens * 1000.0;
+    tokps[c] = (double)tokens / dt;
+    printf("  %s %8.3f ms/token  %7.1f tok/s\n", names[c], ms[c], tokps[c]);
+  }
+  printf("  fast speedup vs plain: %.2fx, vs blocked: %.2fx\n", ms[0] / ms[2], ms[1] / ms[2]);
+  rc = 0;
+
+out:
+  free(row);
+  free(ids);
+  tk_infer_free(inf);
+  tk_gguf_close(gguf);
+  tk_tokenizer_close(tz);
+  return rc;
+}
+
 static int run_tests(void) {
   if (tk_test_all() != 0) {
     fprintf(stderr, "tests failed\n");
@@ -325,6 +392,7 @@ int main(int argc, char **argv) {
   if (strcmp(mode, "tokenize") == 0 || strcmp(mode, "detokenize") == 0) { return run_tokenizer_cmd(argc, argv); }
   if (strcmp(mode, "forward") == 0) return run_forward_cmd(argc, argv);
   if (strcmp(mode, "generate") == 0) return run_generate_cmd(argc, argv);
+  if (strcmp(mode, "bench-infer") == 0) return run_bench_infer_cmd(argc, argv);
 
   if (argc > 2) {
     print_usage(argv[0]);

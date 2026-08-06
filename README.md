@@ -49,6 +49,7 @@ SIMD kernels are enabled automatically when the target supports x86 SSE. Unsuppo
 ./tinykernels detokenize 9707 11 # token ids -> text
 ./tinykernels forward "prompt"   # full Qwen3 forward pass -> greedy next-token ids + logits
 ./tinykernels generate "prompt"  # autoregressive generation (sampling + KV cache)
+./tinykernels bench-infer        # real inference speed, ms/token vs GEMM config
 ```
 
 Running `./tinykernels` with no arguments defaults to `test`.
@@ -64,6 +65,12 @@ against an independent numpy reference and llama.cpp via
 autoregressive loop, applying temperature/top-k/top-p sampling plus the Qwen3
 chat template (with `--think` to start a reasoning block). Sampling is
 deterministic for a fixed `--seed`.
+
+Forward/generate dequantize and cache **every weight resident** in `TkInfer` at
+init, so per-token inference is pure compute (no per-token file I/O). The hot
+GEMMs (QKV, output, SwiGLU MLP, logits) use the SIMD IKJ kernel by default;
+`bench-infer` times real tokens across GEMM configs (plain/blocked/fast) to
+justify the choice.
 
 ## API
 

@@ -1,6 +1,7 @@
 #ifndef TK_FORWARD_H
 #define TK_FORWARD_H
 
+#include "tk_backend.h"
 #include "tk_common.h"
 #include "tk_gguf.h"
 #include "tk_matrix.h"
@@ -21,6 +22,10 @@ void tk_infer_free(TkInfer *inf);
 
 /* Number of tokens processed so far (= filled KV rows). */
 size_t tk_infer_len(const TkInfer *inf);
+
+/* Override the GEMM config used for the QKV/MLP/logits matmuls. Defaults to
+ * single-threaded SIMD IKJ (the fastest GEMV-shaped config for this model). */
+void tk_infer_set_cfg(TkInfer *inf, const tk_matmul_cfg *config);
 
 /* Run the forward pass for one `id` at the current position and write its
  * logits row (vocab_size floats) into `logits`. The Q/K/V for this position

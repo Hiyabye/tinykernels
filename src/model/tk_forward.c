@@ -100,12 +100,24 @@ static float silu(float x) { return x / (1.0f + expf(-x)); }
 /* ---- Inference engine (KV cache) ---- */
 
 #define KV_GROW_MIN 64
+#define INFER_BLOCK 64
+
+/* Resident per-layer dequantized weights. Each `w*` is row-major [in x out]
+ * (transposed from GGUF) so y = x @ W; norms are plain vectors. Cached once at
+ * tk_infer_new so the per-token step does zero file I/O / dequant. */
+typedef struct {
+  TkMatrix wq, wk, wv, wo;     /* attn: [hidden x q/kvwidth], [q/kvwidth x hidden] */
+  TkMatrix wgate, wup, wdown;  /* ffn: [hidden x inter], [inter x hidden] */
+  float *attn_norm, *ffn_norm; /* hidden */
+  float *q_norm, *k_norm;      /* hd */
+} LayerWt;
 
 struct TkInfer {
   const TkGguf *g;
   const TkModel *c;
   size_t n;   /* tokens processed = filled KV rows */
   size_t cap; /* KV cache allocated rows per layer */
+  tk_matmul_cfg cfg;
 
   TkMatrix emb;         /* hidden x vocab, tied lm_head, resident */
   TkMatrix *kc, *vc;    /* per-layer K/V caches, rows=cap, cols=kvwidth */
@@ -114,7 +126,10 @@ struct TkInfer {
 
   /* per-step scratch (1 x width matrices) */
   TkMatrix H, xn, q, k, v, o, ao, xf, gate, up, act, down;
-  float *norm_w, *head_w;
+
+  /* resident dequantized weights (loaded once at init) */
+  LayerWt *layers;   /* num_layers */
+  float *out_norm_w; /* hidden, final RMSNorm */
 };
 
 static tk_status kv_grow(TkInfer *inf, size_t need) {
@@ -152,8 +167,44 @@ TkInfer *tk_infer_new(const TkGguf *g, const TkModel *c) {
     return NULL;
   }
 
+  /* Cache every weight resident so the per-token step does no file I/O. */
+  inf->cfg = tk_matmul_cfg_new(TK_BACKEND_SINGLE, TK_LOOP_IKJ, false, tk_sse_available(), 1, INFER_BLOCK);
   size_t hidden = c->hidden_size, qwidth = c->num_attention_heads * c->head_dim;
-  size_t inter = c->intermediate_size;
+  size_t inter = c->intermediate_size, hd = c->head_dim;
+  inf->layers = tk_xcalloc(c->num_layers, sizeof(LayerWt));
+  char name[64];
+  for (size_t l = 0; l < c->num_layers; l++) {
+    LayerWt *lt = &inf->layers[l];
+    snprintf(name, sizeof(name), "blk.%zu.attn_q.weight", l);
+    if (load_weight(g, name, hidden, qwidth, &lt->wq) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.attn_k.weight", l);
+    if (load_weight(g, name, hidden, kvwidth, &lt->wk) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.attn_v.weight", l);
+    if (load_weight(g, name, hidden, kvwidth, &lt->wv) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.attn_output.weight", l);
+    if (load_weight(g, name, qwidth, hidden, &lt->wo) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.ffn_gate.weight", l);
+    if (load_weight(g, name, hidden, inter, &lt->wgate) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.ffn_up.weight", l);
+    if (load_weight(g, name, hidden, inter, &lt->wup) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.ffn_down.weight", l);
+    if (load_weight(g, name, inter, hidden, &lt->wdown) != TK_OK) goto fail;
+    lt->attn_norm = tk_xmalloc(hidden * sizeof(float));
+    lt->ffn_norm = tk_xmalloc(hidden * sizeof(float));
+    lt->q_norm = tk_xmalloc(hd * sizeof(float));
+    lt->k_norm = tk_xmalloc(hd * sizeof(float));
+    snprintf(name, sizeof(name), "blk.%zu.attn_norm.weight", l);
+    if (tk_gguf_read(g, name, lt->attn_norm, 0, hidden) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.ffn_norm.weight", l);
+    if (tk_gguf_read(g, name, lt->ffn_norm, 0, hidden) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.attn_q_norm.weight", l);
+    if (tk_gguf_read(g, name, lt->q_norm, 0, hd) != TK_OK) goto fail;
+    snprintf(name, sizeof(name), "blk.%zu.attn_k_norm.weight", l);
+    if (tk_gguf_read(g, name, lt->k_norm, 0, hd) != TK_OK) goto fail;
+  }
+  inf->out_norm_w = tk_xmalloc(hidden * sizeof(float));
+  if (tk_gguf_read(g, "output_norm.weight", inf->out_norm_w, 0, hidden) != TK_OK) goto fail;
+
   inf->H = tk_mat_new(1, hidden);
   inf->xn = tk_mat_new(1, hidden);
   inf->q = tk_mat_new(1, qwidth);
@@ -166,9 +217,11 @@ TkInfer *tk_infer_new(const TkGguf *g, const TkModel *c) {
   inf->up = tk_mat_new(1, inter);
   inf->act = tk_mat_new(1, inter);
   inf->down = tk_mat_new(1, hidden);
-  inf->norm_w = tk_xmalloc(hidden * sizeof(float));
-  inf->head_w = tk_xmalloc(c->head_dim * sizeof(float));
   return inf;
+
+fail:
+  tk_infer_free(inf);
+  return NULL;
 }
 
 void tk_infer_free(TkInfer *inf) {
@@ -176,9 +229,25 @@ void tk_infer_free(TkInfer *inf) {
   for (size_t l = 0; l < inf->c->num_layers; l++) {
     free(inf->kc[l].data);
     free(inf->vc[l].data);
+    if (inf->layers) {
+      LayerWt *lt = &inf->layers[l];
+      tk_mat_free(&lt->wq);
+      tk_mat_free(&lt->wk);
+      tk_mat_free(&lt->wv);
+      tk_mat_free(&lt->wo);
+      tk_mat_free(&lt->wgate);
+      tk_mat_free(&lt->wup);
+      tk_mat_free(&lt->wdown);
+      free(lt->attn_norm);
+      free(lt->ffn_norm);
+      free(lt->q_norm);
+      free(lt->k_norm);
+    }
   }
   free(inf->kc);
   free(inf->vc);
+  free(inf->layers);
+  free(inf->out_norm_w);
   tk_mat_free(&inf->emb);
   tk_mat_free(&inf->H);
   tk_mat_free(&inf->xn);
@@ -195,24 +264,26 @@ void tk_infer_free(TkInfer *inf) {
   free(inf->cos_t);
   free(inf->sin_t);
   free(inf->prow);
-  free(inf->norm_w);
-  free(inf->head_w);
   free(inf);
 }
 
 size_t tk_infer_len(const TkInfer *inf) { return inf->n; }
 
+void tk_infer_set_cfg(TkInfer *inf, const tk_matmul_cfg *cfg) {
+  if (inf && cfg) inf->cfg = *cfg;
+}
+
 tk_status tk_infer_step(TkInfer *inf, uint32_t id, float *logits) {
   const TkModel *c = inf->c;
   const size_t hidden = c->hidden_size, vocab = c->vocab_size, hd = c->head_dim;
   const size_t n_heads = c->num_attention_heads, n_kv = c->num_kv_heads;
-  const size_t qwidth = n_heads * hd, kvwidth = n_kv * hd, inter = c->intermediate_size;
+  const size_t kvwidth = n_kv * hd, inter = c->intermediate_size;
   const size_t half = hd / 2;
   const float eps = c->rms_norm_eps;
   const size_t n = inf->n;
   tk_status status;
 
-  tk_matmul_cfg cfg = tk_matmul_cfg_new(TK_BACKEND_SINGLE, TK_LOOP_IJK, false, false, 1, 64);
+  tk_matmul_cfg cfg = inf->cfg;
   if ((status = kv_grow(inf, n + 1)) != TK_OK) return status;
 
   /* embedding lookup for this position */
@@ -225,43 +296,21 @@ tk_status tk_infer_step(TkInfer *inf, uint32_t id, float *logits) {
     inf->sin_t[n * half + i] = sinf(ang);
   }
 
-  char name[64];
   for (size_t l = 0; l < c->num_layers; l++) {
-    /* attention norm */
-    snprintf(name, sizeof(name), "blk.%zu.attn_norm.weight", l);
-    if ((status = tk_gguf_read(inf->g, name, inf->norm_w, 0, hidden)) != TK_OK) return status;
-    rms_norm(inf->H.data, inf->norm_w, hidden, eps, inf->xn.data);
+    const LayerWt *lt = &inf->layers[l];
 
-    /* QKV projections */
-    TkMatrix Wq, Wk, Wv;
-    snprintf(name, sizeof(name), "blk.%zu.attn_q.weight", l);
-    if ((status = load_weight(inf->g, name, hidden, qwidth, &Wq)) != TK_OK) return status;
-    snprintf(name, sizeof(name), "blk.%zu.attn_k.weight", l);
-    if ((status = load_weight(inf->g, name, hidden, kvwidth, &Wk)) != TK_OK) {
-      tk_mat_free(&Wq);
-      return status;
-    }
-    snprintf(name, sizeof(name), "blk.%zu.attn_v.weight", l);
-    if ((status = load_weight(inf->g, name, hidden, kvwidth, &Wv)) != TK_OK) {
-      tk_mat_free(&Wq);
-      tk_mat_free(&Wk);
-      return status;
-    }
-    (void)tk_mat_mul_into(&inf->xn, &Wq, &inf->q, &cfg, &status);
-    (void)tk_mat_mul_into(&inf->xn, &Wk, &inf->k, &cfg, &status);
-    (void)tk_mat_mul_into(&inf->xn, &Wv, &inf->v, &cfg, &status);
-    tk_mat_free(&Wq);
-    tk_mat_free(&Wk);
-    tk_mat_free(&Wv);
+    /* attention norm */
+    rms_norm(inf->H.data, lt->attn_norm, hidden, eps, inf->xn.data);
+
+    /* QKV projections (resident weights) */
+    (void)tk_mat_mul_into(&inf->xn, &lt->wq, &inf->q, &cfg, &status);
+    (void)tk_mat_mul_into(&inf->xn, &lt->wk, &inf->k, &cfg, &status);
+    (void)tk_mat_mul_into(&inf->xn, &lt->wv, &inf->v, &cfg, &status);
     if (status != TK_OK) return status;
 
     /* per-head QK norm, then RoPE */
-    snprintf(name, sizeof(name), "blk.%zu.attn_q_norm.weight", l);
-    if ((status = tk_gguf_read(inf->g, name, inf->head_w, 0, hd)) != TK_OK) return status;
-    head_rms_norm(inf->q.data, inf->head_w, 1, n_heads, hd, eps);
-    snprintf(name, sizeof(name), "blk.%zu.attn_k_norm.weight", l);
-    if ((status = tk_gguf_read(inf->g, name, inf->head_w, 0, hd)) != TK_OK) return status;
-    head_rms_norm(inf->k.data, inf->head_w, 1, n_kv, hd, eps);
+    head_rms_norm(inf->q.data, lt->q_norm, 1, n_heads, hd, eps);
+    head_rms_norm(inf->k.data, lt->k_norm, 1, n_kv, hd, eps);
     const float *cr = inf->cos_t + n * half, *sr = inf->sin_t + n * half;
     apply_rope(inf->q.data, 1, n_heads, hd, cr, sr);
     apply_rope(inf->k.data, 1, n_kv, hd, cr, sr);
@@ -272,46 +321,22 @@ tk_status tk_infer_step(TkInfer *inf, uint32_t id, float *logits) {
     attention_step(inf->o.data, inf->q.data, inf->kc[l].data, inf->vc[l].data, n, n_heads, n_kv, hd, inf->prow);
 
     /* output projection -> residual */
-    TkMatrix Wo;
-    snprintf(name, sizeof(name), "blk.%zu.attn_output.weight", l);
-    if ((status = load_weight(inf->g, name, qwidth, hidden, &Wo)) != TK_OK) return status;
-    (void)tk_mat_mul_into(&inf->o, &Wo, &inf->ao, &cfg, &status);
-    tk_mat_free(&Wo);
+    (void)tk_mat_mul_into(&inf->o, &lt->wo, &inf->ao, &cfg, &status);
     if (status != TK_OK) return status;
     for (size_t k = 0; k < hidden; k++) inf->H.data[k] += inf->ao.data[k];
 
     /* SwiGLU MLP -> residual */
-    snprintf(name, sizeof(name), "blk.%zu.ffn_norm.weight", l);
-    if ((status = tk_gguf_read(inf->g, name, inf->norm_w, 0, hidden)) != TK_OK) return status;
-    rms_norm(inf->H.data, inf->norm_w, hidden, eps, inf->xf.data);
-    TkMatrix Wg, Wu, Wd;
-    snprintf(name, sizeof(name), "blk.%zu.ffn_gate.weight", l);
-    if ((status = load_weight(inf->g, name, hidden, inter, &Wg)) != TK_OK) return status;
-    snprintf(name, sizeof(name), "blk.%zu.ffn_up.weight", l);
-    if ((status = load_weight(inf->g, name, hidden, inter, &Wu)) != TK_OK) {
-      tk_mat_free(&Wg);
-      return status;
-    }
-    snprintf(name, sizeof(name), "blk.%zu.ffn_down.weight", l);
-    if ((status = load_weight(inf->g, name, inter, hidden, &Wd)) != TK_OK) {
-      tk_mat_free(&Wg);
-      tk_mat_free(&Wu);
-      return status;
-    }
-    (void)tk_mat_mul_into(&inf->xf, &Wg, &inf->gate, &cfg, &status);
-    (void)tk_mat_mul_into(&inf->xf, &Wu, &inf->up, &cfg, &status);
+    rms_norm(inf->H.data, lt->ffn_norm, hidden, eps, inf->xf.data);
+    (void)tk_mat_mul_into(&inf->xf, &lt->wgate, &inf->gate, &cfg, &status);
+    (void)tk_mat_mul_into(&inf->xf, &lt->wup, &inf->up, &cfg, &status);
     for (size_t i = 0; i < inter; i++) inf->act.data[i] = silu(inf->gate.data[i]) * inf->up.data[i];
-    (void)tk_mat_mul_into(&inf->act, &Wd, &inf->down, &cfg, &status);
-    tk_mat_free(&Wg);
-    tk_mat_free(&Wu);
-    tk_mat_free(&Wd);
+    (void)tk_mat_mul_into(&inf->act, &lt->wdown, &inf->down, &cfg, &status);
     if (status != TK_OK) return status;
     for (size_t k = 0; k < hidden; k++) inf->H.data[k] += inf->down.data[k];
   }
 
   /* final norm + lm_head = tied embedding */
-  if ((status = tk_gguf_read(inf->g, "output_norm.weight", inf->norm_w, 0, hidden)) != TK_OK) return status;
-  rms_norm(inf->H.data, inf->norm_w, hidden, eps, inf->xf.data);
+  rms_norm(inf->H.data, inf->out_norm_w, hidden, eps, inf->xf.data);
   TkMatrix out = {1, vocab, logits};
   (void)tk_mat_mul_into(&inf->xf, &inf->emb, &out, &cfg, &status);
   if (status != TK_OK) return status;

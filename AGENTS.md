@@ -13,7 +13,9 @@ src/main.c  (thin CLI, subcommand dispatch)
   ├── test   → src/test/tk_test.c        (matmul + tokenizer + gguf/model regressions)
   ├── bench  → src/bench/tk_bench.c      (timing sweeps, 14-col CSV)
   ├── model  → src/model/tk_model.c + tk_gguf.c (load/validate/spot-check)
-  └── tokenize/detokenize → src/model/tk_tokenizer.c
+  ├── tokenize/detokenize → src/model/tk_tokenizer.c
+  ├── forward/generate    → src/model/tk_forward.c + tk_generate.c (KV cache, sampling)
+  └── bench-infer         → real inference timing via tk_infer_set_cfg
 
 Dependency direction is inward, no upward deps:
   app(main) → test/bench → backend/kernels → model → core(tk_common, tk_matrix, tk_util)
@@ -41,7 +43,14 @@ Validation (src/backend/tk_validate.c)
 Model (src/model/)
   ├── tk_gguf.c       GGUF v3 reader (header, metadata KV, tensor info, F32/Q8_0 dequant)
   ├── tk_tokenizer.c  byte-level BPE tokenizer/detokenizer (vocab from GGUF)
-  └── tk_model.c      TkModel config (hardcoded Qwen3-0.6B + GGUF-derived)
+  ├── tk_model.c      TkModel config (hardcoded Qwen3-0.6B + GGUF-derived)
+  ├── tk_forward.c    TkInfer: per-layer KV cache + cached resident weights
+  └── tk_generate.c   chat template + sampling (temperature/top-k/top-p)
+
+TkInfer dequantizes **every weight resident** at init (transposed to y = x @ W),
+so the per-token step does zero file I/O; the hot GEMMs (QKV, output, SwiGLU
+MLP, logits) run the SIMD IKJ kernel by default (config swapped via
+tk_infer_set_cfg). bench-infer times tokens across plain/blocked/fast configs.
 
 Data layout: Row-major `float` matrices. `tk_elem_t` is `typedef float`.
 ```
@@ -102,7 +111,7 @@ Plots need `matplotlib`/`pandas`; `make bench` prefers the project venv (`.venv/
 
 |File|Role|
 |---|---|
-|`src/main.c`|Entry point, subcommand dispatch (`test`/`bench`/`all`/`model`/`tokenize`/`detokenize`, default `test`)|
+|`src/main.c`|Entry point, subcommand dispatch (`test`/`bench`/`all`/`model`/`tokenize`/`detokenize`/`forward`/`generate`/`bench-infer`, default `test`)|
 |`include/tk_common.h`|Foundation: `tk_status`, `tk_x*` alloc, logger, `tk_min`, `tk_now_seconds`|
 |`src/core/tk_util.c`|Definitions for the foundation (alloc, logger, `tk_now_seconds`)|
 |`include/tk_matrix.h`, `src/core/tk_matrix.c`|`TkMatrix` struct + `tk_mat_*` API|
@@ -113,6 +122,8 @@ Plots need `matplotlib`/`pandas`; `make bench` prefers the project venv (`.venv/
 |`include/tk_gguf.h`, `src/model/tk_gguf.c`|GGUF v3 reader: header + metadata KV + tensor info, on-demand F32/Q8_0 dequant; shared by tokenizer and weight loading|
 |`include/tk_tokenizer.h`, `src/model/tk_tokenizer.c`|Byte-level BPE tokenizer/detokenizer (vocab from GGUF)|
 |`include/tk_model.h`, `src/model/tk_model.c`|`TkModel` config (hardcoded + GGUF-derived) + config helpers|
+|`include/tk_forward.h`, `src/model/tk_forward.c`|`TkInfer` incremental engine: per-layer KV cache, resident dequantized weights, `tk_infer_step` + `tk_infer_set_cfg` GEMM override|
+|`include/tk_generate.h`, `src/model/tk_generate.c`|Chat template + sampling (temperature/top-k/top-p, seeded xorshift64)|
 |`src/test/tk_test.c`|Correctness vs reference (1e-6) + tokenizer + gguf/model regression cases|
 |`src/bench/tk_bench.c`|Benchmark sweeps, CSV writer (`tk_bench_default_suite`)|
 |`scripts/plot_benchmarks.py`|matplotlib plots: matrix size, thread count, block size sweeps. Unchanged|
