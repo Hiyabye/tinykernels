@@ -44,9 +44,20 @@ SIMD kernels are enabled automatically when the target supports x86 SSE. Unsuppo
 ./tinykernels test   # correctness tests
 ./tinykernels bench  # benchmark suite
 ./tinykernels all    # tests, then benchmarks
+./tinykernels model  # print GGUF-derived architecture, validate tensor inventory
+./tinykernels tokenize "text"    # byte-level BPE -> token ids
+./tinykernels detokenize 9707 11 # token ids -> text
+./tinykernels forward "prompt"   # full Qwen3 forward pass -> greedy next-token ids + logits
 ```
 
 Running `./tinykernels` with no arguments defaults to `test`.
+
+`forward` runs the whole Qwen3-0.6B transformer (embedding, RMSNorm, QKV +
+QK-norm, RoPE, GQA attention, SwiGLU MLP, tied lm_head) on top of the matmul
+kernels, writes full per-token logits to `results/data/forward_logits.bin`, and
+prints the greedy next-token id per position. Its logits are cross-checked
+against an independent numpy reference and llama.cpp via
+`scripts/verify_forward.py`.
 
 ## API
 

@@ -4,7 +4,7 @@ WARN      = -Wall -Wextra -Wpedantic -Werror -Wshadow -Wformat=2 -Wstrict-protot
             -Wmissing-prototypes -Wwrite-strings -Wundef -Wpointer-arith
 CFLAGS   ?= $(OPT) $(WARN) -std=c99
 CPPFLAGS ?= -Iinclude
-LDLIBS   ?= -pthread
+LDLIBS   ?= -pthread -lm
 
 OPENMP ?= 0
 ifeq ($(OPENMP),1)

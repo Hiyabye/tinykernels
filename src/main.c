@@ -1,4 +1,5 @@
 #include "tk_bench.h"
+#include "tk_forward.h"
 #include "tk_gguf.h"
 #include "tk_model.h"
 #include "tk_test.h"
@@ -7,10 +8,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define QWEN_DEFAULT_GGUF "Qwen3-0.6B-Q8_0.gguf"
 
-static void print_usage(const char *program) { fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>]\n", program); }
+static void print_usage(const char *program) {
+  fprintf(stderr, "usage: %s [test|bench|all|model|tokenize <text>|detokenize <id...>|forward <text>]\n", program);
+}
 
 static int run_tokenizer_cmd(int argc, char **argv) {
   TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
@@ -124,6 +128,81 @@ static int run_model_cmd(const char *path) {
   return (d0 == TK_OK && dq == TK_OK && ok) ? 0 : 1;
 }
 
+static int run_forward_cmd(int argc, char **argv) {
+  const char *text = argc > 2 ? argv[2] : "The capital of France is";
+  tk_status s = TK_ERR_INTERNAL;
+  TkTokenizer *tz = tk_tokenizer_open(QWEN_DEFAULT_GGUF);
+  TkGguf *gguf = NULL;
+  uint32_t *ids = NULL;
+  TkMatrix logits = {0};
+  if (!tz) {
+    fprintf(stderr, "error: failed to load tokenizer from %s\n", QWEN_DEFAULT_GGUF);
+    return 1;
+  }
+  gguf = tk_gguf_open(QWEN_DEFAULT_GGUF);
+  if (!gguf) {
+    tk_tokenizer_close(tz);
+    return 1;
+  }
+
+  TkModel cfg = tk_model_from_gguf(gguf);
+  size_t T = tk_tokenize(tz, text, &ids);
+  if (T == 0) {
+    fprintf(stderr, "error: empty prompt\n");
+    goto out;
+  }
+
+  s = tk_forward_logits(gguf, &cfg, ids, T, &logits);
+  if (s != TK_OK) {
+    fprintf(stderr, "error: forward pass failed (status %d)\n", s);
+    goto out;
+  }
+
+  /* Dump full logits for the verification script. */
+  mkdir("results/data", 0755);
+  FILE *f = fopen("results/data/forward_logits.bin", "wb");
+  if (f) {
+    fwrite(logits.data, sizeof(float), logits.rows * logits.cols, f);
+    fclose(f);
+  }
+
+  /* Contract output: greedy next-token id per position (predicts token t+1). */
+  for (size_t t = 0; t < T; t++) {
+    const float *row = logits.data + t * logits.cols;
+    size_t best = 0;
+    for (size_t i = 1; i < logits.cols; i++)
+      if (row[i] > row[best]) best = i;
+    printf("%s%zu", t ? " " : "", best);
+  }
+  printf("\n");
+
+  /* Diagnostics: top-5 final-position candidates + their detokenized text. */
+  {
+    const float *row = logits.data + (T - 1) * logits.cols;
+    uint32_t idx[5] = {0, 0, 0, 0, 0};
+    for (size_t i = 0; i < logits.cols; i++)
+      for (int b = 0; b < 5; b++)
+        if (row[i] > row[idx[b]]) {
+          for (int x = 3; x >= b; x--) idx[x + 1] = idx[x];
+          idx[b] = i;
+          break;
+        }
+    fprintf(stderr, "top-5 final-position tokens:\n");
+    for (int b = 0; b < 5; b++) {
+      char *tok = tk_detokenize(tz, &idx[b], 1);
+      fprintf(stderr, "  %-7u score=%.4f %s\n", idx[b], row[idx[b]], tok);
+      free(tok);
+    }
+  }
+
+out:
+  free(ids);
+  tk_mat_free(&logits);
+  tk_gguf_close(gguf);
+  tk_tokenizer_close(tz);
+  return s != TK_OK;
+}
+
 static int run_tests(void) {
   if (tk_test_all() != 0) {
     fprintf(stderr, "tests failed\n");
@@ -136,6 +215,7 @@ int main(int argc, char **argv) {
   const char *mode = argc > 1 ? argv[1] : "test";
 
   if (strcmp(mode, "tokenize") == 0 || strcmp(mode, "detokenize") == 0) { return run_tokenizer_cmd(argc, argv); }
+  if (strcmp(mode, "forward") == 0) return run_forward_cmd(argc, argv);
 
   if (argc > 2) {
     print_usage(argv[0]);
