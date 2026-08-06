@@ -232,7 +232,7 @@ static void bench_block_size_sweep(FILE *output) {
     }
 #endif
 
-    bench_run_case("block_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count, output);
+    bench_run_case(output, "block_size", matrix_size, matrix_size, matrix_size, iterations, configs, config_count);
   }
 }
 

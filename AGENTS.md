@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`tinykernels` is a C99 educational project that explores CPU matrix multiplication kernels. It implements multiple algorithm variants — naive scalar, loop-order (IJK/IKJ), cache blocking, SSE SIMD (IKJ only), pthread parallelism, and optional OpenMP — along with correctness tests, CSV benchmarking, and plotting.
+`tinykernels` is a C99 educational project exploring CPU matrix-multiplication kernels. It implements multiple algorithm variants — naive scalar, loop-order (IJK/IKJ), cache blocking, SSE SIMD (IKJ only), pthread parallelism, and optional OpenMP — along with correctness tests, CSV benchmarking, and plotting.
 
 ## Architecture & Data Flow
 
@@ -14,7 +14,7 @@ main.c
 
 Core API (src/matmul/matmul.c)
   ├── matmul()      → allocates output, delegates to matmul_into()
-  └── matmul_into() → dispatches to backend (single/pthread/openmp)
+  └── matmul_into() → validates, zeroes output, dispatches to backend
 
 Backend dispatch (switch on MatmulConfig.backend)
   ├── single        → src/matmul/single.c    (serial, calls matmul_range)
@@ -22,12 +22,12 @@ Backend dispatch (switch on MatmulConfig.backend)
   └── openmp        → src/matmul/openmp.c    (#pragma omp parallel for)
 
 Kernel dispatch (include/kernels/dispatch.h)
-  ├── matmul_range()          → selects SIMD or scalar based on config+CPU features
-  │   ├── SIMD (src/matmul/simd.c)  → SSE __m128, 4-wide unroll, IKJ only
-  │   └── scalar (include/kernels/dispatch.h)
-  │       ├── blocking enabled  → blocked_ijk or blocked_ikj
-  │       └── no blocking       → ijk or ikj
-  └── Loop kernels (include/kernels/loop.h) — static inline header-only
+  └── matmul_range()          → selects SIMD or scalar based on config+CPU features
+      ├── SIMD (src/matmul/simd.c)  → SSE __m128, 4-wide unroll, IKJ only
+      └── scalar (include/kernels/dispatch.h)
+          ├── blocking enabled  → blocked_ijk or blocked_ikj
+          └── no blocking       → ijk or ikj
+      └── Loop kernels (include/kernels/loop.h) — static inline header-only
 
 Validation (src/matmul/validate.c)
   └── validate_matrices / validate_input_matrices / validate_config
@@ -37,15 +37,15 @@ Data layout: Row-major `float` matrices. `mat_elem_t` is `typedef float`.
 
 ## Key Directories
 
-| Path | Purpose |
-|------|---------|
-| `include/` | Public headers: `matmul.h`, `matrix.h`, `bench_matmul.h`, `test_matmul.h` |
-| `include/kernels/` | Internal kernel headers: `loop.h`, `simd.h`, `dispatch.h`, `backends.h` |
-| `src/matmul/` | Matmul implementation: `matmul.c`, `single.c`, `simd.c`, `pthread.c`, `openmp.c`, `validate.c` |
-| `src/` | Root source: `main.c`, `matrix.c`, `bench_matmul.c`, `test_matmul.c` |
-| `scripts/` | `plot_benchmarks.py` — matplotlib plots from benchmark CSV |
-| `results/data/` | `benchmark_results.csv` — auto-generated benchmark data |
-| `results/plots/` | Auto-generated PNG charts |
+|Path|Purpose|
+|---|---|
+|`include/`|Public headers: `matmul.h`, `matrix.h`, `bench_matmul.h`, `test_matmul.h`|
+|`include/kernels/`|Internal kernel headers: `loop.h`, `simd.h`, `dispatch.h`, `backends.h`|
+|`src/matmul/`|Matmul implementation: `matmul.c`, `single.c`, `simd.c`, `pthread.c`, `openmp.c`, `validate.c`|
+|`src/`|Root source: `main.c`, `matrix.c`, `bench_matmul.c`, `test_matmul.c`|
+|`scripts/`|`plot_benchmarks.py` — matplotlib plots from benchmark CSV|
+|`results/data/`|`benchmark_results.csv` — auto-generated benchmark data|
+|`results/plots/`|Auto-generated PNG charts|
 
 ## Development Commands
 
@@ -57,6 +57,7 @@ make sanitize             # build with -fsanitize=address,undefined
 ./tinykernels bench       # run benchmark suite (requires results/ dirs)
 ./tinykernels all         # tests + benchmarks
 make bench                # run benchmarks + regenerate plots
+make plots                # regenerate plots from existing CSV
 make clean                # remove build artifacts
 ```
 
@@ -77,21 +78,21 @@ Enable OpenMP: `OPENMP=1 make clean && make`
 
 ## Important Files
 
-| File | Role |
-|------|------|
-| `src/main.c` | Entry point, CLI routing (`test`/`bench`/`all`) |
-| `src/matmul/matmul.c` | Core API: `matmul()`, `matmul_into()`, `matmul_config()`, `matmul_simd_available()` |
-| `include/matmul.h` | Public API: `MatmulConfig`, `MatmulBackend`, `MatmulLoopOrder`, function declarations |
-| `include/matrix.h` | `Matrix` struct, `matrix_*` API |
-| `include/kernels/dispatch.h` | `matmul_range()` — selects SIMD vs scalar, blocking vs plain |
-| `include/kernels/loop.h` | `static inline` loop kernels: ijk, ikj, blocked variants |
-| `include/kernels/backends.h` | Backend declarations + validation function declarations |
-| `src/matmul/simd.c` | SSE IKJ kernels (`__m128` vectorized) |
-| `src/bench_matmul.c` | Benchmark harness, sweep generators, CSV writer |
-| `src/test_matmul.c` | Correctness tests vs reference output (1e-6 tolerance) |
-| `scripts/plot_benchmarks.py` | matplotlib plots: matrix size sweep, thread count sweep, block size sweep |
-| `Makefile` | Build system, flags, sanitizers, OpenMP toggle |
-| `compile_flags.txt` | LSP/clangd config (`-Iinclude`) |
+|File|Role|
+|---|---|
+|`src/main.c`|Entry point, CLI routing (`test`/`bench`/`all`, default `test`)|
+|`src/matmul/matmul.c`|Core API: `matmul()`, `matmul_into()`, `matmul_config()`, `matmul_simd_available()`|
+|`include/matmul.h`|Public API: `MatmulConfig`, `MatmulBackend`, `MatmulLoopOrder`, function declarations|
+|`include/matrix.h`|`Matrix` struct, `matrix_*` API|
+|`include/kernels/dispatch.h`|`matmul_range()` — selects SIMD vs scalar, blocking vs plain|
+|`include/kernels/loop.h`|`static inline` loop kernels: ijk, ikj, blocked variants|
+|`include/kernels/backends.h`|Backend declarations + validation function declarations|
+|`src/matmul/simd.c`|SSE IKJ kernels (`__m128` vectorized)|
+|`src/bench_matmul.c`|Benchmark harness, sweep generators, CSV writer|
+|`src/test_matmul.c`|Correctness tests vs reference output (1e-6 tolerance)|
+|`scripts/plot_benchmarks.py`|matplotlib plots: matrix size sweep, thread count sweep, block size sweep|
+|`Makefile`|Build system, flags, sanitizers, OpenMP toggle|
+|`compile_flags.txt`|LSP/clangd config (`-Iinclude`)|
 
 ## Runtime/Tooling Preferences
 
@@ -103,7 +104,7 @@ Enable OpenMP: `OPENMP=1 make clean && make`
 
 ## Testing & QA
 
-- **Correctness**: `./tinykernels test` — compares each config output against a reference `matmul()` (single backend, IJK, no blocking, no SIMD) with `1e-6` float tolerance. Tests various matrix dimensions (1×1 to 70×70) and config sweeps (threads 1–8, block sizes 1–128).
+- **Correctness**: `./tinykernels test` — compares each config output against a reference `matmul()` (single backend, IJK, no blocking, no SIMD) with `1e-6` float tolerance. Tests various matrix dimensions (1×1 to 70×70) and config sweeps (threads 1–8, block sizes 1–128). Returns exit 1 on failure.
 - **Sanitizers**: `make sanitize && ./tinykernels test` — catches memory errors (ASan) and UB (UBSan).
-- **Benchmark output**: CSV at `results/data/benchmark_results.csv` with 14 columns. Plots at `results/plots/`.
+- **Benchmark output**: CSV at `results/data/benchmark_results.csv` with 14 columns (`sweep,rows,inner,cols,backend,loop_order,use_blocking,use_simd,num_threads,block_size,iterations,time_sec,speedup_vs_baseline,label`). Plots at `results/plots/`.
 - **No test framework**: Custom inline test harness in `src/test_matmul.c` with ANSI-colored output.

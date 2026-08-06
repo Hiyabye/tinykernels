@@ -1,10 +1,11 @@
 #include "bench_matmul.h"
+#include "qwen.h"
 #include "test_matmul.h"
 
 #include <stdio.h>
 #include <string.h>
 
-static void print_usage(const char *program) { fprintf(stderr, "usage: %s [test|bench|all]\n", program); }
+static void print_usage(const char *program) { fprintf(stderr, "usage: %s [test|bench|all|model]\n", program); }
 
 static int run_tests(void) {
   if (!test_matmul_correctness()) {
@@ -33,6 +34,12 @@ int main(int argc, char **argv) {
   if (strcmp(mode, "all") == 0) {
     if (run_tests() != 0) return 1;
     bench_run_default_suite("results/data/benchmark_results.csv");
+    return 0;
+  }
+
+  if (strcmp(mode, "model") == 0) {
+    QwenConfig cfg = qwen_config_qwen3_0_6b();
+    qwen_config_print(&cfg);
     return 0;
   }
 
